@@ -1,4 +1,10 @@
 # spring-boot-graalvm
+[![Build Status](https://travis-ci.org/jonashackt/spring-boot-graalvm.svg?branch=master)](https://travis-ci.org/jonashackt/spring-boot-graalvm)
+[![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/spring-boot-graalvm/blob/master/LICENSE)
+[![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
+[![versionspringboot](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27parent%27%5D%2F%2A%5Blocal-name%28%29%3D%27version%27%5D&label=springboot)](https://github.com/spring-projects/spring-boot)
+
+
 An example REST based Spring Boot application, that runs with GraalVM
 
 
@@ -100,11 +106,112 @@ There are also already some example projects available: https://github.com/sprin
 
 
 
-### Create a simple Spring Boot app
+### Create a simple WebFlux Reactive REST Spring Boot app
 
 As famous [starbuxman](https://twitter.com/starbuxman) suggests, we start at: https://start.spring.io/!
 
-As https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support suggests, the GraalVM Native Image support becomes better every day - so we should choose the newest Spring Boot `2.3` Milestone release available. Stable Native Image support for Spring Boot could be expected with [Spring Frameworks 5.3 release planned in October 2020](https://spring.io/blog/2019/12/03/spring-framework-maintenance-roadmap-in-2020-including-4-3-eol), on which Spring Boot 2.4 will be based.
+As https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support suggests, the GraalVM Native Image support becomes better every day - so we should choose the newest Spring Boot `2.3` Milestone release available:
+
+![spring.start.io](screenshots/spring.start.io.png)      
+
+Stable Native Image support for Spring Boot could be expected with [Spring Frameworks 5.3 release planned in October 2020](https://spring.io/blog/2019/12/03/spring-framework-maintenance-roadmap-in-2020-including-4-3-eol), on which Spring Boot 2.4 will be based.
+
+Let's create a simple Spring Boot Reactive REST service. First we need a Handler like [HelloHandler](src/main/java/io/jonashackt/springbootgraal/HelloHandler.java):
+
+```java
+package io.jonashackt.springbootgraal;
+
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.server.ServerRequest;
+import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.core.publisher.Mono;
+
+@Component
+public class HelloHandler {
+
+    protected static String RESPONSE_TEXT= "Hello Reactive People!";
+
+    public Mono<ServerResponse> hello(ServerRequest serverRequest) {
+        return ServerResponse
+                        .ok()
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .body(BodyInserters.fromValue(RESPONSE_TEXT));
+    }
+}
+```
+
+In the Reactive Spring approach we also need a Router - let's create [HelloRouter](src/main/java/io/jonashackt/springbootgraal/HelloRouter.java):
+
+```java
+package io.jonashackt.springbootgraal;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.server.*;
+
+@Component
+public class HelloRouter {
+
+    @Bean
+    public RouterFunction<ServerResponse> route(HelloHandler helloHandler) {
+        return RouterFunctions.route(
+                RequestPredicates.GET("/hello").and(RequestPredicates.accept(MediaType.TEXT_PLAIN)),
+                serverRequest -> helloHandler.hello(serverRequest)
+        );
+    }
+}
+```
+
+Now we have everything in place to create a Testcase [HelloRouterTest](src/test/java/io/jonashackt/springbootgraal/HelloRouterTest.java) using the non-blocking [WebClient](https://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/web/reactive/function/client/WebClient.html):
+
+```java
+package io.jonashackt.springbootgraal;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@ExtendWith(SpringExtension.class)
+@SpringBootTest(
+		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
+)
+class HelloRouterTest {
+
+	@LocalServerPort
+	private int port;
+
+	private WebClient webClient;
+
+	@BeforeEach
+	public void init() {
+		webClient = WebClient.create("http://localhost:" + port);
+	}
+
+	@Test void
+	should_call_reactive_rest_resource() {
+		Mono<ClientResponse> result = webClient
+				.get()
+				.uri("/hello")
+				.accept(MediaType.TEXT_PLAIN)
+				.exchange();
+
+		assertEquals(HelloHandler.RESPONSE_TEXT, result.flatMap(response -> response.bodyToMono(String.class)).block());
+	}
+}
+``` 
+
 
 # Links
 
