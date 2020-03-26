@@ -8,8 +8,9 @@
 
 An example REST based Spring Boot application, that runs with GraalVM
 
-
 > This project here shows a technical demo of what's possible right now - stable GraalVM Native Image support for Spring Boot could be expected with [Spring Frameworks 5.3 release planned in October 2020](https://spring.io/blog/2019/12/03/spring-framework-maintenance-roadmap-in-2020-including-4-3-eol), on which Spring Boot 2.4 will be based.
+
+[![asciicast](https://asciinema.org/a/313688.svg)](https://asciinema.org/a/313688)
 
 # New to GraalVM with Spring Boot?
 
@@ -49,9 +50,7 @@ GraalVM Native Image supports:
 There are also already some example projects available: https://github.com/spring-projects-experimental/spring-graal-native/tree/master/spring-graal-native-samples 
 
 
-# HowTo
-
-### Install GraalVM 
+# Install GraalVM 
 
 On a Mac simple use [GraalVM's homebrew-tap](https://github.com/graalvm/homebrew-tap):
 
@@ -106,11 +105,13 @@ GraalVM Version 20.0.0 CE
 ```
 
 
-### Create a simple WebFlux Reactive REST Spring Boot app
+# Create a simple WebFlux Reactive REST Spring Boot app
 
 As famous [starbuxman](https://twitter.com/starbuxman) suggests, we start at: https://start.spring.io/!
 
-As https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support suggests, the GraalVM Native Image support becomes better every day - so we should choose the newest Spring Boot `2.3` Milestone release available:
+As https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support suggests, the GraalVM Native Image support becomes better every day - so [we should choose the newest Spring Boot `2.3` Milestone release](https://github.com/spring-projects-experimental/spring-graal-native) available:
+
+> Spring Boot 2.3.0.M1 (you may be able to get some things working with Boot 2.2.X but not 2.1 or earlier)
 
 ![spring.start.io](screenshots/spring.start.io.png)      
 
@@ -217,6 +218,12 @@ If you want to create another Spring Boot app I can recomment the great [Getting
 
 # Make Spring Boot app Graal Native Image friendly
 
+From https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support#experimental-support:
+
+> "The spring-graal-native experimental project, created by Andy Clement, shows how it is possible to run a Spring Boot application out of the box as a GraalVM native image. It could be used as a basis for a potential upcoming official support."
+
+So let's try this currently available implementation!
+
 
 ### Relocate Annotation classpath scanning from runtime to build time
 
@@ -238,7 +245,7 @@ We could use the spring-context-indexer via importing it with Maven:
 
 This would produce a `META-INF/spring.components` file containing a list of all Spring Compontens, Entities and so on.
 
-But we don't have to do this manually, since the [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graal-native) (again, this is in experimental stage right now) does this automatically for us.
+__But we don't have to do this manually__, since the [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graal-native) (again, this is in experimental stage right now) does this automatically for us.
 
 The `@AutomaticFeature` will additionally chase down imported annotated classes like `@Import` - it knows, which kinds of annotations lead to reflection needs at runtime, which with GraalVM need to be registered at build time.
 
@@ -268,10 +275,167 @@ But the [SpringBootHelloApplication.java](src/main/java/io/jonashackt/springboot
 The `@AutomaticFeature` again pulls the work from runtime to build time - and eliminates the need for runtime autoconfiguration.
 
 
+### Get Spring Graal @AutomaticFeature
+
+In order to compile our Spring Boot App as a Native Image, we need to have the latest [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graal-native) in place. As of writing these lines here there's no Maven Dependency available, since this project is in a very early stage of development I guess.
+
+So we need another way to get this dependency. A simple way could be a bash script, that need to be run in order to clone and build the needed Dependencies inside our local directory. Therefore see [get-spring-feature.sh](get-spring-feature.sh):
+
+```shell script 
+#!/usr/bin/env bash
+echo %%% 1. Clone current spring-graal-native %%%
+git clone https://github.com/spring-projects-experimental/spring-graal-native.git
+cd spring-graal-native
+
+echo %%% 2. Build Spring GraalVM Native Feature %%%
+cd spring-graal-native-feature
+mvn clean install
+
+echo %%% 3. Build Spring GraalVM Native Configuration %%%
+cd ../spring-graal-native-configuration
+mvn clean install
+```
+
+Simply run the script via `./get-spring-feature.sh` and both needed dependencies `spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar` & `spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar` should be available.
+
+Don't forget to add the resulting directory to your [.gitignore](.gitignore):
+
+```
+# ignore spring-graal-native, since we don't have a Maven dependency right now & need to clone it
+spring-graal-native
+```
+
 ### Craft the compile.sh script
+
+I'am pretty sure, that this step described here will not be necessary when Spring will officially release the Graal full support. But right now, we do need to do a little grunt work here.
+
+There are great examples of working compile scripts inside the [spring-graal-native-samples](https://github.com/spring-projects-experimental/spring-graal-native/tree/master/spring-graal-native-samples) project. So let's try to derive our own from that - just have a look into this project's [compile.sh](compile.sh):
+
+```shell script
+#!/usr/bin/env bash
+
+# Define needed variables
+ARTIFACT=spring-boot-graal
+MAINCLASS=io.jonashackt.springbootgraal.SpringBootHelloApplication
+VERSION=0.0.1-SNAPSHOT
+FEATURE=../../../spring-graal-native-feature/target/spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar:../../../spring-graal-native-configuration/target/spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar
+
+GRAALVM_VERSION=`native-image --version`
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# Build Spring Boot App
+rm -rf target
+mkdir -p target/native-image
+
+echo "Packaging $ARTIFACT with Maven"
+mvn -DskipTests package > target/native-image/output.txt
+```
+
+The first part of the script simply defines some needed variables, cleans (aka removes) the `target` directory and then builds our Spring Boot App via a well known `mvn package`.
+
+If you wan't to use this compile script for your project as well simply change the `ARTIFACT`, `MAINCLASS` and `VERSION` variables accordingly.
+
+After the build, the Spring Boot fat jar needs to be expanded and the classpath needs to be set to the content of the results. Also the Spring Graal AutomaticFeature needs to be available on the classpath.
+
+```shell script
+# Expand the Spring Boot fat jar
+JAR="$ARTIFACT-$VERSION.jar"
+rm -f $ARTIFACT
+echo "Unpacking $JAR"
+cd target/native-image
+jar -xvf ../$JAR >/dev/null 2>&1
+cp -R META-INF BOOT-INF/classes
+
+# Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath
+LIBPATH=`find BOOT-INF/lib | tr '\n' ':'`
+CP=BOOT-INF/classes:$LIBPATH:$FEATURE
+```
+
+Now finally the Native Image compilation is triggered with lot's of appropriate configuration options:
+
+```shell script
+# Compile the Graal Native Image
+echo "Compiling $ARTIFACT with $GRAALVM_VERSION"
+{ time native-image \
+  --verbose \
+  --no-server \
+  --no-fallback \
+  --initialize-at-build-time \
+  -H:+TraceClassInitialization \
+  -H:Name=$ARTIFACT \
+  -H:+ReportExceptionStackTraces \
+  --allow-incomplete-classpath \
+  --report-unsupported-elements-at-runtime \
+  -DremoveUnusedAutoconfig=true \
+  -DremoveYamlSupport=true \
+  -cp $CP $MAINCLASS >> output.txt ; } 2>> output.txt
+
+if [[ -f $ARTIFACT ]]
+then
+  printf "${GREEN}SUCCESS${NC}\n"
+  mv ./$ARTIFACT ..
+  exit 0
+else
+  cat output.txt
+  printf "${RED}FAILURE${NC}: an error occurred when compiling the native-image.\n"
+  exit 1
+fi
+```
+
+
+### Run the compile.sh script
+
+We can now run the compile script with `./compile.sh`: 
+
+```
+$ ./compile.sh
+Packaging spring-boot-graal with Maven
+Unpacking spring-boot-graal-0.0.1-SNAPSHOT.jar
+Compiling spring-boot-graal with GraalVM Version 20.0.0 CE
+SUCCESS
+```
+
+The compile step does take it's time (depending on your hardware!).
+
+If you got a `SUCCESS` at the end, you're now be able to __fire up your first GraalVM Native App!__. How cool is that?!! All you have to do is to run
+
+```
+./target/spring-graal-vm
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::
+
+2020-03-26 15:45:32.086  INFO 33864 --- [           main] i.j.s.SpringBootHelloApplication         : Starting SpringBootHelloApplication on PikeBook.fritz.box with PID 33864 (/Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target/spring-boot-graal started by jonashecht in /Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target)
+2020-03-26 15:45:32.086  INFO 33864 --- [           main] i.j.s.SpringBootHelloApplication         : No active profile set, falling back to default profiles: default
+2020-03-26 15:45:32.133  WARN 33864 --- [           main] io.netty.channel.DefaultChannelId        : Failed to find the current process ID from ''; using a random value: 801435406
+2020-03-26 15:45:32.136  INFO 33864 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+2020-03-26 15:45:32.137  INFO 33864 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 0.083 seconds (JVM running for 0.086)
+```
+
+[![asciicast](https://asciinema.org/a/313688.svg)](https://asciinema.org/a/313688)
+
+__Your Spring Boot App started in 0.083!!__ Simply access the App via http://localhost:8080/hello.
 
 
 
 # Links
 
+https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support
+
+https://www.infoq.com/presentations/spring-boot-graalvm/
+
+https://github.com/spring-projects/spring-framework/issues/21529
+
+https://stackoverflow.com/questions/50911552/graalvm-and-spring-applications
+
 https://blog.softwaremill.com/graalvm-installation-and-setup-on-macos-294dd1d23ca2
+
+https://hub.docker.com/r/springci/graalvm-ce-java8
