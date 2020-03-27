@@ -426,6 +426,28 @@ __Your Spring Boot App started in 0.083!!__ Simply access the App via http://loc
 
 
 
+# Use Docker to compile a Spring Boot App with GraalVM
+
+There's an [official Docker image from Oracle](https://hub.docker.com/r/oracle/graalvm-ce/tags), but this one sadyl lacks both Maven with it's `mvn` command and the `native-image` plugin also not installed.
+
+But again our Spring guys have something for us: There's a derived Docker image https://hub.docker.com/r/springci/graalvm-ce-java8 we can simply use - it adds Maven and Native-Image so we can just use it.
+
+When I first thought about a Docker usage, I started to craft a `Dockerfile` - but then I realized, that there's [no easy way of using Docker volumes at Docker build time](https://stackoverflow.com/questions/51086724/docker-build-using-volumes-at-build-time). But I really wanted to mount a Docker volume to my local Maven repository like `--volume "$HOME"/.m2:/root/.m2` to prevent the download of all the Spring Maven dependencies over and over again every time we start our Docker container.
+
+So I went with another way: We simply use a `docker run` command, that will compile our native Spring Boot app into our project's working directory (with `--volume $(pwd):/build`):
+
+```
+docker run -it --rm \
+    --volume $(pwd):/build \
+    --workdir /build \
+    --volume "$HOME"/.m2:/root/.m2 \
+    springci/graalvm-ce-java8:20.1.0-dev_20200125-1203 ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+```
+
+> There's no `latest` image of `springci/graalvm-ce-java8` - so we need to explicitely use a tag like `springci/graalvm-ce-java8:20.1.0-dev_20200125-1203`
+
+
+
 # Links
 
 https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support
@@ -439,3 +461,5 @@ https://stackoverflow.com/questions/50911552/graalvm-and-spring-applications
 https://blog.softwaremill.com/graalvm-installation-and-setup-on-macos-294dd1d23ca2
 
 https://hub.docker.com/r/springci/graalvm-ce-java8
+
+https://hub.docker.com/r/oracle/graalvm-ce/

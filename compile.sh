@@ -1,40 +1,50 @@
 #!/usr/bin/env bash
 
-# Define needed variables
-ARTIFACT=spring-boot-graal
-MAINCLASS=io.jonashackt.springbootgraal.SpringBootHelloApplication
-VERSION=0.0.1-SNAPSHOT
-FEATURE=../../spring-graal-native/spring-graal-native-feature/target/spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar:../../spring-graal-native/spring-graal-native-configuration/target/spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar
+if [ -z "$1" ];
+  then
+    echo "[--> ERROR] Please provide your Spring Boot Main class as script parameter like this: ./compile.sh your.package.YourSpringBootApplicationClass"
+    exit
+fi
+echo "[-->] Using Mainclass '$1' provided as parameter"
+MAINCLASS=$1
 
-GRAALVM_VERSION=`native-image --version`
-
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-# Build Spring Boot App
+echo "[-->] Cleaning target directory & creating new one"
 rm -rf target
 mkdir -p target/native-image
 
-echo "Packaging $ARTIFACT with Maven"
-mvn -DskipTests package > target/native-image/output.txt
+echo "[-->] Build Spring Boot App with mvn package"
+mvn -DskipTests package
 
-# Expand the Spring Boot fat jar
+echo "[-->] Detect artifactId from pom.xml"
+ARTIFACT=$(mvn -q \
+-Dexec.executable=echo \
+-Dexec.args='${project.artifactId}' \
+--non-recursive \
+exec:exec);
+echo "artifactId is '$ARTIFACT'"
+
+echo "[-->] Detect artifact version from pom.xml"
+VERSION=$(mvn -q \
+  -Dexec.executable=echo \
+  -Dexec.args='${project.version}' \
+  --non-recursive \
+  exec:exec);
+echo "artifact version is $VERSION"
+
+echo "[-->] Expanding the Spring Boot fat jar"
 JAR="$ARTIFACT-$VERSION.jar"
-rm -f $ARTIFACT
-echo "Unpacking $JAR"
 cd target/native-image
 jar -xvf ../$JAR >/dev/null 2>&1
 cp -R META-INF BOOT-INF/classes
 
-# Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath
+echo "[-->] Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath"
 LIBPATH=`find BOOT-INF/lib | tr '\n' ':'`
+FEATURE=../../spring-graal-native/spring-graal-native-feature/target/spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar:../../spring-graal-native/spring-graal-native-configuration/target/spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar
 CP=BOOT-INF/classes:$LIBPATH:$FEATURE
 
-# Compile the Graal Native Image
-echo "Compiling $ARTIFACT with $GRAALVM_VERSION"
-{ time native-image \
-  --verbose \
+GRAALVM_VERSION=`native-image --version`
+echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
+time native-image \
   --no-server \
   --no-fallback \
   --initialize-at-build-time \
@@ -45,16 +55,5 @@ echo "Compiling $ARTIFACT with $GRAALVM_VERSION"
   --report-unsupported-elements-at-runtime \
   -DremoveUnusedAutoconfig=true \
   -DremoveYamlSupport=true \
-  -cp $CP $MAINCLASS >> output.txt ; } 2>> output.txt
-
-if [[ -f $ARTIFACT ]]
-then
-  printf "${GREEN}SUCCESS${NC}\n"
-  mv ./$ARTIFACT ..
-  exit 0
-else
-  cat output.txt
-  printf "${RED}FAILURE${NC}: an error occurred when compiling the native-image.\n"
-  exit 1
-fi
+  -cp $CP $MAINCLASS;
 
