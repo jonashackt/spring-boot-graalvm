@@ -216,6 +216,7 @@ class HelloRouterTest {
 If you want to create another Spring Boot app I can recomment the great [Getting Started Guides](https://spring.io/guides)!
 
 
+
 # Make Spring Boot app Graal Native Image friendly
 
 From https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support#experimental-support:
@@ -314,53 +315,72 @@ There are great examples of working compile scripts inside the [spring-graal-nat
 ```shell script
 #!/usr/bin/env bash
 
-# Define needed variables
-ARTIFACT=spring-boot-graal
-MAINCLASS=io.jonashackt.springbootgraal.SpringBootHelloApplication
-VERSION=0.0.1-SNAPSHOT
-FEATURE=../../../spring-graal-native-feature/target/spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar:../../../spring-graal-native-configuration/target/spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar
+if [ -z "$1" ];
+  then
+    echo "[--> ERROR] Please provide your Spring Boot Main class as script parameter like this: ./compile.sh your.package.YourSpringBootApplicationClass"
+    exit
+fi
+echo "[-->] Using Mainclass '$1' provided as parameter"
+MAINCLASS=$1
 
-GRAALVM_VERSION=`native-image --version`
+echo "[-->] Detect artifactId from pom.xml"
+ARTIFACT=$(mvn -q \
+-Dexec.executable=echo \
+-Dexec.args='${project.artifactId}' \
+--non-recursive \
+exec:exec);
+echo "artifactId is '$ARTIFACT'"
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-NC='\033[0m'
+echo "[-->] Detect artifact version from pom.xml"
+VERSION=$(mvn -q \
+  -Dexec.executable=echo \
+  -Dexec.args='${project.version}' \
+  --non-recursive \
+  exec:exec);
+echo "artifact version is $VERSION"
+```
 
-# Build Spring Boot App
+The first part of the script is dedicated to define needed variables for later GraalVM Native Image compilation. The variables `ARTIFACT` and `VERSION` could be simply derived from our [pom.xml](pom.xml) with [the help of the Maven exec plugin](https://stackoverflow.com/a/26514030/4964553).
+
+It would be also cool, if we were able to retrieve the needed Spring Boot Main class name automatically, but I sadly didn't find a way. Therefore, I defined a parameter to run this [compile.sh](compile.sh) script properly - simply insert your Spring Boot Main class:
+
+```shell script
+./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+```
+
+In the next section of the [compile.sh](compile.sh) script, we clean (aka remove) the `target` directory and build our Spring Boot App via a well known `mvn package`:
+
+```shell script
+echo "[-->] Cleaning target directory & creating new one"
 rm -rf target
 mkdir -p target/native-image
 
-echo "Packaging $ARTIFACT with Maven"
-mvn -DskipTests package > target/native-image/output.txt
+echo "[-->] Build Spring Boot App with mvn package"
+mvn -DskipTests package
 ```
 
-The first part of the script simply defines some needed variables, cleans (aka removes) the `target` directory and then builds our Spring Boot App via a well known `mvn package`.
-
-If you wan't to use this compile script for your project as well simply change the `ARTIFACT`, `MAINCLASS` and `VERSION` variables accordingly.
 
 After the build, the Spring Boot fat jar needs to be expanded and the classpath needs to be set to the content of the results. Also the Spring Graal AutomaticFeature needs to be available on the classpath.
 
 ```shell script
-# Expand the Spring Boot fat jar
+echo "[-->] Expanding the Spring Boot fat jar"
 JAR="$ARTIFACT-$VERSION.jar"
-rm -f $ARTIFACT
-echo "Unpacking $JAR"
 cd target/native-image
 jar -xvf ../$JAR >/dev/null 2>&1
 cp -R META-INF BOOT-INF/classes
 
-# Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath
+echo "[-->] Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath"
 LIBPATH=`find BOOT-INF/lib | tr '\n' ':'`
+FEATURE=../../spring-graal-native/spring-graal-native-feature/target/spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar:../../spring-graal-native/spring-graal-native-configuration/target/spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar
 CP=BOOT-INF/classes:$LIBPATH:$FEATURE
 ```
 
-Now finally the Native Image compilation is triggered with lot's of appropriate configuration options:
+Now finally the GraalVM Native Image compilation is triggered with lot's of appropriate configuration options:
 
 ```shell script
-# Compile the Graal Native Image
-echo "Compiling $ARTIFACT with $GRAALVM_VERSION"
-{ time native-image \
-  --verbose \
+GRAALVM_VERSION=`native-image --version`
+echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
+time native-image \
   --no-server \
   --no-fallback \
   --initialize-at-build-time \
@@ -371,39 +391,51 @@ echo "Compiling $ARTIFACT with $GRAALVM_VERSION"
   --report-unsupported-elements-at-runtime \
   -DremoveUnusedAutoconfig=true \
   -DremoveYamlSupport=true \
-  -cp $CP $MAINCLASS >> output.txt ; } 2>> output.txt
-
-if [[ -f $ARTIFACT ]]
-then
-  printf "${GREEN}SUCCESS${NC}\n"
-  mv ./$ARTIFACT ..
-  exit 0
-else
-  cat output.txt
-  printf "${RED}FAILURE${NC}: an error occurred when compiling the native-image.\n"
-  exit 1
-fi
+  -cp $CP $MAINCLASS;
 ```
 
+I altered this section compared to the example scripts also, since I wanted to see the compilation process in my console.
 
-### Run the compile.sh script
 
-We can now run the compile script with `./compile.sh`: 
+### Run the compile.sh script & start your native Spring Boot App
 
-```
-$ ./compile.sh
-Packaging spring-boot-graal with Maven
-Unpacking spring-boot-graal-0.0.1-SNAPSHOT.jar
-Compiling spring-boot-graal with GraalVM Version 20.0.0 CE
-SUCCESS
+We can now run the compile script with: 
+
+```shell script
+./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
 ```
 
-The compile step does take it's time (depending on your hardware!).
+The compile step does take it's time (depending on your hardware!). On my MacBook Pro 2017 this takes around 3 to 4 minutes. I prepared a small asciinema record so that you can have a look at how the compilation process works:
 
-If you got a `SUCCESS` at the end, you're now be able to __fire up your first GraalVM Native App!__. How cool is that?!! All you have to do is to run
+[![asciicast](https://asciinema.org/a/320745.svg)](https://asciinema.org/a/320745)
 
+
+If your console shows something like the following:
+
+```shell script
+[spring-boot-graal:93927]   (typeflow):  74,606.04 ms, 12.76 GB
+[spring-boot-graal:93927]    (objects):  58,480.01 ms, 12.76 GB
+[spring-boot-graal:93927]   (features):   8,413.90 ms, 12.76 GB
+[spring-boot-graal:93927]     analysis: 147,776.93 ms, 12.76 GB
+[spring-boot-graal:93927]     (clinit):   1,578.42 ms, 12.76 GB
+[spring-boot-graal:93927]     universe:   4,909.40 ms, 12.76 GB
+[spring-boot-graal:93927]      (parse):   6,885.61 ms, 12.78 GB
+[spring-boot-graal:93927]     (inline):   6,594.06 ms, 12.78 GB
+[spring-boot-graal:93927]    (compile):  33,040.00 ms, 12.79 GB
+[spring-boot-graal:93927]      compile:  50,001.85 ms, 12.79 GB
+[spring-boot-graal:93927]        image:   8,963.82 ms, 12.79 GB
+[spring-boot-graal:93927]        write:   2,414.18 ms, 12.79 GB
+[spring-boot-graal:93927]      [total]: 232,479.88 ms, 12.79 GB
+
+real	3m54.635s
+user	16m16.765s
+sys	1m55.756s
 ```
-./target/spring-graal-vm
+ 
+you're now be able to __fire up your first GraalVM Native App!__. How cool is that?!! All you have to do is to run the generated executable `/target/spring-graal-vm`:
+
+```shell script
+$ ./target/spring-graal-vm
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -419,6 +451,8 @@ If you got a `SUCCESS` at the end, you're now be able to __fire up your first Gr
 2020-03-26 15:45:32.136  INFO 33864 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
 2020-03-26 15:45:32.137  INFO 33864 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 0.083 seconds (JVM running for 0.086)
 ```
+
+I also prepared a small asciicast - but be aware, you'll maybe don't get it since it's damn fast :)
 
 [![asciicast](https://asciinema.org/a/313688.svg)](https://asciinema.org/a/313688)
 

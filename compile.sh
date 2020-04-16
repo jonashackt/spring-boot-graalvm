@@ -8,13 +8,6 @@ fi
 echo "[-->] Using Mainclass '$1' provided as parameter"
 MAINCLASS=$1
 
-echo "[-->] Cleaning target directory & creating new one"
-rm -rf target
-mkdir -p target/native-image
-
-echo "[-->] Build Spring Boot App with mvn package"
-mvn -DskipTests package
-
 echo "[-->] Detect artifactId from pom.xml"
 ARTIFACT=$(mvn -q \
 -Dexec.executable=echo \
@@ -30,6 +23,13 @@ VERSION=$(mvn -q \
   --non-recursive \
   exec:exec);
 echo "artifact version is $VERSION"
+
+echo "[-->] Cleaning target directory & creating new one"
+rm -rf target
+mkdir -p target/native-image
+
+echo "[-->] Build Spring Boot App with mvn package"
+mvn -DskipTests package
 
 echo "[-->] Expanding the Spring Boot fat jar"
 JAR="$ARTIFACT-$VERSION.jar"
