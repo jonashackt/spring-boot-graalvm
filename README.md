@@ -50,28 +50,44 @@ GraalVM Native Image supports:
 There are also already some example projects available: https://github.com/spring-projects-experimental/spring-graal-native/tree/master/spring-graal-native-samples 
 
 
-# Install GraalVM 
+# Install GraalVM with SDKMAN
 
-On a Mac simple use [GraalVM's homebrew-tap](https://github.com/graalvm/homebrew-tap):
-
-```
-brew cask install graalvm/tap/graalvm-ce-java11
-```
-
-Now have a look at your installed JVMs:
+Let's install GraalVM with the help of SDKMAN. Therefore you need to [have SDKMAN itself installed](https://sdkman.io/install):
 
 ```
-/usr/libexec/java_home -V
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
 ```
 
-Finally set the `JAVA_HOME` & `PATH` variables for easy access of GraalVM (or even make this available after terminal restarts by adding it e.g. to your `~/.bash_profile` or `.zshrc`):
+If SDKMAN has been installed successfully, the following command should work:
 
 ```
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-ce-java11-20.0.0/Contents/Home
-export PATH=$JAVA_HOME/bin:$PATH
+$ sdk list java
+
+================================================================================
+Available Java Versions
+================================================================================
+ Vendor        | Use | Version      | Dist    | Status     | Identifier
+--------------------------------------------------------------------------------
+ AdoptOpenJDK  |     | 14.0.0.j9    | adpt    |            | 14.0.0.j9-adpt
+               |     | 14.0.0.hs    | adpt    |            | 14.0.0.hs-adpt
+               |     | 13.0.2.j9    | adpt    |            | 13.0.2.j9-adpt
+... 
+ GraalVM       |     | 20.0.0.r11   | grl     |            | 20.0.0.r11-grl
+               |     | 20.0.0.r8    | grl     |            | 20.0.0.r8-grl
+               |     | 19.3.1.r11   | grl     |            | 19.3.1.r11-grl
+...
 ```
 
-Check, if GraalVM is now your new default JVM:
+The list itself is much longer and you could see the wonderful simplicity of this approach: Don't ever mess again with JDK installations!
+
+Now to install GraalVM based on JDK11, simply run:
+
+```
+sdk install java 20.0.0.r11-grl
+``` 
+
+SDKMAN now installs GraalVM for us. To have the correct `PATH` configuration in place, you may need to restart your console. If everything went fine, you should see `java -version` react like this:
 
 ```
 $ java -version
@@ -79,6 +95,8 @@ openjdk version "11.0.6" 2020-01-14
 OpenJDK Runtime Environment GraalVM CE 20.0.0 (build 11.0.6+9-jvmci-20.0-b02)
 OpenJDK 64-Bit Server VM GraalVM CE 20.0.0 (build 11.0.6+9-jvmci-20.0-b02, mixed mode, sharing)
 ```
+
+
 
 ### Install GraalVM Native Image
 
