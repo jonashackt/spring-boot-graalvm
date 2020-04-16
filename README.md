@@ -482,6 +482,35 @@ I also prepared a small asciicast - but be aware, you'll maybe don't get it sinc
 __Your Spring Boot App started in 0.083!!__ Simply access the App via http://localhost:8080/hello.
 
 
+# Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI
+
+As we are used to test-driven development and we rely on very new code, which is for sure subject to change in the near future, we should be also able to automatically run our GraalVM Native image complilation on a Cloud CI provider like 
+
+In order to run the compilation process, we need to install GraalVM and GraalVM Native Image first on TravisCI. Therefore let's have a look into our [.travis.yml](.travis.yml):
+
+```yaml
+language: java
+jdk:
+  - openjdk11
+
+install:
+  # Install GraalVM with SDKMAN
+  - curl -s "https://get.sdkman.io" | bash
+  - source "$HOME/.sdkman/bin/sdkman-init.sh"
+  - sdk install java 20.0.0.r11-grl
+  
+  # Check if GraalVM was installed successfully
+  - java -version
+
+  # Install GraalVM Native Image
+  - gu install native-image
+
+  # Check if Native Image was installed properly
+  - native-image --version
+
+script: mvn clean install
+```
+
 
 # Use Docker to compile a Spring Boot App with GraalVM
 
