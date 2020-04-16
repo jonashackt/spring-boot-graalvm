@@ -1,5 +1,3 @@
-# ignore spring-graal-native, since we don't have a Maven dependency right now & need to clone it
-spring-graal-native
 
 HELP.md
 target/

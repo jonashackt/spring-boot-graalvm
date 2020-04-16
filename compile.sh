@@ -39,7 +39,8 @@ cp -R META-INF BOOT-INF/classes
 
 echo "[-->] Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath"
 LIBPATH=`find BOOT-INF/lib | tr '\n' ':'`
-FEATURE=../../spring-graal-native/spring-graal-native-feature/target/spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar:../../spring-graal-native/spring-graal-native-configuration/target/spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar
+MAVEN_REPO_HOME=~/.m2/repository
+FEATURE=$MAVEN_REPO_HOME/org/springframework/experimental/spring-graal-native/0.6.1.RELEASE/spring-graal-native-0.6.1.RELEASE.jar
 CP=BOOT-INF/classes:$LIBPATH:$FEATURE
 
 GRAALVM_VERSION=`native-image --version`
@@ -51,8 +52,6 @@ time native-image \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
-  --allow-incomplete-classpath \
-  --report-unsupported-elements-at-runtime \
   -DremoveUnusedAutoconfig=true \
   -DremoveYamlSupport=true \
   -cp $CP $MAINCLASS;

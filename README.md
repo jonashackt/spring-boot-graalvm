@@ -278,35 +278,41 @@ The `@AutomaticFeature` again pulls the work from runtime to build time - and el
 
 ### Get Spring Graal @AutomaticFeature
 
-In order to compile our Spring Boot App as a Native Image, we need to have the latest [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graal-native) in place. As of writing these lines here there's no Maven Dependency available, since this project is in a very early stage of development I guess.
+In order to compile our Spring Boot App as a Native Image, we need to have the latest [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graal-native) in place. As until March 2020 there was no Maven Dependency available, since this project is in a very early stage of development I guess. So I initially crafted a script `get-spring-feature.sh` that cloned and build the project for local usage.
 
-So we need another way to get this dependency. A simple way could be a bash script, that need to be run in order to clone and build the needed Dependencies inside our local directory. Therefore see [get-spring-feature.sh](get-spring-feature.sh):
+But the Spring guys are moving fast! As there was also [a spring.io post released by starbuxman](https://spring.io/blog/2020/04/16/spring-tips-the-graalvm-native-image-builder-feature) at 16th of April, I think he got [Andy Clement](https://twitter.com/andy_clement) and [Sébastien Deleuze](https://twitter.com/sdeleuze) to get him a Maven dependecy available on https://repo.spring.io/milestone :)
 
-```shell script 
-#!/usr/bin/env bash
-echo %%% 1. Clone current spring-graal-native %%%
-git clone https://github.com/spring-projects-experimental/spring-graal-native.git
-cd spring-graal-native
-
-echo %%% 2. Build Spring GraalVM Native Feature %%%
-cd spring-graal-native-feature
-mvn clean install
-
-echo %%% 3. Build Spring GraalVM Native Configuration %%%
-cd ../spring-graal-native-configuration
-mvn clean install
-```
-
-Simply run the script via `./get-spring-feature.sh` and both needed dependencies `spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar` & `spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar` should be available.
-
-Don't forget to add the resulting directory to your [.gitignore](.gitignore):
+So there we go! Now we don't need to manually download and compile the @AutomaticFeature, we simply add a dependency to our [pom.xml](pom.xml):
 
 ```
-# ignore spring-graal-native, since we don't have a Maven dependency right now & need to clone it
-spring-graal-native
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.experimental</groupId>
+			<artifactId>spring-graal-native</artifactId>
+			<version>0.6.1.RELEASE</version>
+		</dependency>
+    ...
+
+	<repositories>
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>https://repo.spring.io/milestone</url>
+		</repository>
+	</repositories>
+	<pluginRepositories>
+		<pluginRepository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>https://repo.spring.io/milestone</url>
+		</pluginRepository>
+	</pluginRepositories>
+
 ```
 
-### Craft the compile.sh script
+Be sure to also have the separate `Spring Milestones` repository definition in place, since the library isn't available on Maven Central right now!
+
+### Craft a compile.sh script
 
 I'am pretty sure, that this step described here will not be necessary when Spring will officially release the Graal full support. But right now, we do need to do a little grunt work here.
 
@@ -342,11 +348,7 @@ echo "artifact version is $VERSION"
 
 The first part of the script is dedicated to define needed variables for later GraalVM Native Image compilation. The variables `ARTIFACT` and `VERSION` could be simply derived from our [pom.xml](pom.xml) with [the help of the Maven exec plugin](https://stackoverflow.com/a/26514030/4964553).
 
-It would be also cool, if we were able to retrieve the needed Spring Boot Main class name automatically, but I sadly didn't find a way. Therefore, I defined a parameter to run this [compile.sh](compile.sh) script properly - simply insert your Spring Boot Main class:
-
-```shell script
-./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
-```
+It would be also cool, if we were able to retrieve the needed Spring Boot Main class name automatically, but I sadly didn't find a way. Therefore, I defined a parameter to run this [compile.sh](compile.sh) script properly - simply insert your Spring Boot Main class `./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication`
 
 In the next section of the [compile.sh](compile.sh) script, we clean (aka remove) the `target` directory and build our Spring Boot App via a well known `mvn package`:
 
@@ -360,7 +362,9 @@ mvn -DskipTests package
 ```
 
 
-After the build, the Spring Boot fat jar needs to be expanded and the classpath needs to be set to the content of the results. Also the Spring Graal AutomaticFeature needs to be available on the classpath.
+After the build, the Spring Boot fat jar needs to be expanded and the classpath needs to be set to the content of the results.
+
+Also the Spring Graal AutomaticFeature needs to be available on the classpath. Therefore we need the correct path to the `spring-graal-native-0.6.1.RELEASE.jar` file inside our `compile.sh` script:
 
 ```shell script
 echo "[-->] Expanding the Spring Boot fat jar"
@@ -371,9 +375,12 @@ cp -R META-INF BOOT-INF/classes
 
 echo "[-->] Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath"
 LIBPATH=`find BOOT-INF/lib | tr '\n' ':'`
-FEATURE=../../spring-graal-native/spring-graal-native-feature/target/spring-graal-native-feature-0.6.0.BUILD-SNAPSHOT.jar:../../spring-graal-native/spring-graal-native-configuration/target/spring-graal-native-configuration-0.6.0.BUILD-SNAPSHOT.jar
+MAVEN_REPO_HOME=~/.m2/repository
+FEATURE=$MAVEN_REPO_HOME/org/springframework/experimental/spring-graal-native/0.6.1.RELEASE/spring-graal-native-0.6.1.RELEASE.jar
 CP=BOOT-INF/classes:$LIBPATH:$FEATURE
 ```
+
+The script assumes, that your Maven repository resides in your user home under `~/.m2/repository` - change that the variable `MAVEN_REPO_HOME` inside the [compile.sh](compile.sh), if that isn't the case! 
 
 Now finally the GraalVM Native Image compilation is triggered with lot's of appropriate configuration options:
 
@@ -387,8 +394,6 @@ time native-image \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
-  --allow-incomplete-classpath \
-  --report-unsupported-elements-at-runtime \
   -DremoveUnusedAutoconfig=true \
   -DremoveYamlSupport=true \
   -cp $CP $MAINCLASS;
@@ -432,10 +437,10 @@ user	16m16.765s
 sys	1m55.756s
 ```
  
-you're now be able to __fire up your first GraalVM Native App!__. How cool is that?!! All you have to do is to run the generated executable `/target/spring-graal-vm`:
+you're now be able to __fire up your first GraalVM Native App!__. How cool is that?!! All you have to do is to run the generated executable `/target/native-image/spring-graal-vm`:
 
 ```shell script
-$ ./target/spring-graal-vm
+$ ./target/native-image/spring-graal-vm
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -497,3 +502,13 @@ https://blog.softwaremill.com/graalvm-installation-and-setup-on-macos-294dd1d23c
 https://hub.docker.com/r/springci/graalvm-ce-java8
 
 https://hub.docker.com/r/oracle/graalvm-ce/
+
+https://stackoverflow.com/questions/58465833/graalvm-with-native-image-compilation-in-travis-ci
+
+https://spring.io/blog/2020/04/09/spring-graal-native-0-6-0-released
+
+https://spring.io/blog/2020/04/16/spring-tips-the-graalvm-native-image-builder-feature
+
+https://github.com/spring-projects-experimental/spring-graal-native#install-graalvm-native
+
+Current docs: https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html
