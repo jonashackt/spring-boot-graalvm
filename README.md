@@ -486,10 +486,10 @@ __Your Spring Boot App started in 0.083!!__ Simply access the App via http://loc
 
 As we are used to test-driven development and we rely on very new code, which is for sure subject to change in the near future, we should be also able to automatically run our GraalVM Native image complilation on a Cloud CI provider like 
 
-In order to run the compilation process, we need to install GraalVM and GraalVM Native Image first on TravisCI. Therefore let's have a look into our [.travis.yml](.travis.yml):
+In order to run the compilation process, we need to [install GraalVM and GraalVM Native Image first on TravisCI](https://stackoverflow.com/a/61254927/4964553). Therefore let's have a look into our [.travis.yml](.travis.yml):
 
 ```yaml
-language: java
+language: minimal
 
 install:
   # Install GraalVM with SDKMAN
@@ -499,6 +499,12 @@ install:
 
   # Check if GraalVM was installed successfully
   - java -version
+
+  # Install Maven, that uses GraalVM for later builds
+  - sdk install maven
+
+  # Show Maven using GraalVM JDK
+  - mvn --version
 
   # Install GraalVM Native Image
   - gu install native-image
@@ -510,6 +516,12 @@ script:
   # Run GraalVM Native Image compilation of Spring Boot App
   - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
 ```
+
+There are two main things to notice here: First we simply leverage the power of SDKMAN again to install GraalVM, as we already did on our local machines.
+
+Second: __Don't use a `language: java` or the default linux distros like `distro: bionic`!__, because they ship with pre-installed Maven versions, which is configured to use the pre-installed OpenJDK - and __NOT our GraalVM installation__.
+
+Therefore we simply use the `language: minimal`, which is [a simple way of getting our Travis builds based on a basic Travis build environment without pre-installed JDKs or Maven](https://stackoverflow.com/a/44738181/4964553).
 
 
 # Use Docker to compile a Spring Boot App with GraalVM
