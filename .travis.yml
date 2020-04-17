@@ -1,4 +1,9 @@
-language: java
+dist: bionic
+
+# Cache SDKMAN downloads
+cache:
+  directories:
+    - /home/travis/.sdkman/archives
 
 install:
   # Install GraalVM with SDKMAN
@@ -8,6 +13,10 @@ install:
 
   # Check if GraalVM was installed successfully
   - java -version
+
+  # Install Maven, that uses GraalVM for later builds
+  - sdk install maven
+
   # Show Maven using GraalVM JDK
   - mvn --version
 
@@ -19,13 +28,4 @@ install:
 
 script:
   # Run GraalVM Native Image compilation of Spring Boot App
-  - native-image \
-    --no-server \
-    --no-fallback \
-    --initialize-at-build-time \
-    -H:+TraceClassInitialization \
-    -H:Name=yourArtifactNameHere \
-    -H:+ReportExceptionStackTraces \
-    -DremoveUnusedAutoconfig=true \
-    -DremoveYamlSupport=true \
-    -cp yourClassPathHere yourMainClassHere;
+  - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
