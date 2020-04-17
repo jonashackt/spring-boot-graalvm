@@ -489,7 +489,7 @@ As we are used to test-driven development and we rely on very new code, which is
 In order to run the compilation process, we need to [install GraalVM and GraalVM Native Image first on TravisCI](https://stackoverflow.com/a/61254927/4964553). Therefore let's have a look into our [.travis.yml](.travis.yml):
 
 ```yaml
-distro: bionic
+dist: bionic
 language: minimal
 
 install:
@@ -520,7 +520,7 @@ script:
 
 There are two main things to notice here: First we simply leverage the power of SDKMAN again to install GraalVM, as we already did on our local machines.
 
-Second: __Don't use a `language: java` or the default linux distros like `distro: bionic`!__, because they ship with pre-installed Maven versions, which is configured to use the pre-installed OpenJDK - and __NOT our GraalVM installation__.
+Second: __Don't use a `language: java` or the default linux distros like `dist: bionic`!__, because they ship with pre-installed Maven versions, which is configured to use the pre-installed OpenJDK - and __NOT our GraalVM installation__.
 
 Therefore we simply use the `language: minimal`, which is [a simple way of getting our Travis builds based on a basic Travis build environment without pre-installed JDKs or Maven](https://stackoverflow.com/a/44738181/4964553) together with `distro: bionic` which will tell Travis to use the latest available `minimal` build image (see https://docs.travis-ci.com/user/languages/minimal-and-generic/).
 
@@ -710,6 +710,95 @@ Warning: class initialization of class io.netty.handler.ssl.JettyNpnSslEngine fa
 [spring-boot-graal:5634]      compile: 133,862.12 ms,  6.23 GB
 [spring-boot-graal:5634]        image:   8,635.21 ms,  6.23 GB
 [spring-boot-graal:5634]        write:   1,472.98 ms,  6.23 GB
+```
+
+### Tackling the 'There was an error linking the native image /usr/bin/ld: final link failed: Memory exhausted' error
+
+I now had Travis finally compiling my Spring Boot App - but with a last error (you can [see full log here](https://travis-ci.org/github/jonashackt/spring-boot-graalvm)):
+
+```
+[spring-boot-graal:5634]   (typeflow): 238,622.47 ms,  6.23 GB
+[spring-boot-graal:5634]    (objects): 122,937.15 ms,  6.23 GB
+[spring-boot-graal:5634]   (features):  10,311.79 ms,  6.23 GB
+[spring-boot-graal:5634]     analysis: 379,203.23 ms,  6.23 GB
+[spring-boot-graal:5634]     (clinit):   2,542.77 ms,  6.23 GB
+[spring-boot-graal:5634]     universe:   9,890.85 ms,  6.23 GB
+[spring-boot-graal:5634]      (parse):  20,901.16 ms,  6.23 GB
+[spring-boot-graal:5634]     (inline):  14,131.55 ms,  6.23 GB
+[spring-boot-graal:5634]    (compile):  94,847.99 ms,  6.23 GB
+[spring-boot-graal:5634]      compile: 133,862.12 ms,  6.23 GB
+[spring-boot-graal:5634]        image:   8,635.21 ms,  6.23 GB
+[spring-boot-graal:5634]        write:   1,472.98 ms,  6.23 GB
+Fatal error: java.lang.RuntimeException: java.lang.RuntimeException: There was an error linking the native image: Linker command exited with 1
+
+Linker command executed:
+cc -v -o /home/travis/build/jonashackt/spring-boot-graalvm/target/native-image/spring-boot-graal -z noexecstack -Wl,--gc-sections -Wl,--dynamic-list -Wl,/tmp/SVM-8253584528623373425/exported_symbols.list -Wl,-x -L/tmp/SVM-8253584528623373425 -L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib -L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64 /tmp/SVM-8253584528623373425/spring-boot-graal.o /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libnet.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libjava.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libzip.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libnio.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libextnet.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libffi.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/liblibchelper.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libjvm.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libstrictmath.a -lpthread -ldl -lz -lrt
+
+Linker command ouput:
+Using built-in specs.
+COLLECT_GCC=cc
+COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-linux-gnu/7/lto-wrapper
+OFFLOAD_TARGET_NAMES=nvptx-none
+OFFLOAD_TARGET_DEFAULT=1
+Target: x86_64-linux-gnu
+Configured with: ../src/configure -v --with-pkgversion='Ubuntu 7.4.0-1ubuntu1~18.04.1' --with-bugurl=file:///usr/share/doc/gcc-7/README.Bugs --enable-languages=c,ada,c++,go,brig,d,fortran,objc,obj-c++ --prefix=/usr --with-gcc-major-version-only --program-suffix=-7 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --with-sysroot=/ --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-libmpx --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu
+Thread model: posix
+gcc version 7.4.0 (Ubuntu 7.4.0-1ubuntu1~18.04.1) 
+COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/7/:/usr/lib/gcc/x86_64-linux-gnu/7/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/7/:/usr/lib/gcc/x86_64-linux-gnu/
+LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/7/:/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/7/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-v' '-o' '/home/travis/build/jonashackt/spring-boot-graalvm/target/native-image/spring-boot-graal' '-z' 'noexecstack' '-L/tmp/SVM-8253584528623373425' '-L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib' '-L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64' '-mtune=generic' '-march=x86-64'
+ /usr/lib/gcc/x86_64-linux-gnu/7/collect2 -plugin /usr/lib/gcc/x86_64-linux-gnu/7/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/7/lto-wrapper -plugin-opt=-fresolution=/tmp/ccHdD8kF.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --sysroot=/ --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o /home/travis/build/jonashackt/spring-boot-graalvm/target/native-image/spring-boot-graal -z noexecstack /usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/7/crtbeginS.o -L/tmp/SVM-8253584528623373425 -L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib -L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64 -L/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.. --gc-sections --dynamic-list /tmp/SVM-8253584528623373425/exported_symbols.list -x /tmp/SVM-8253584528623373425/spring-boot-graal.o /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libnet.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libjava.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libzip.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libnio.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libextnet.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libffi.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/liblibchelper.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libjvm.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libstrictmath.a -lpthread -ldl -lz -lrt -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/7/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/crtn.o
+/usr/bin/ld: final link failed: Memory exhausted
+collect2: error: ld returned 1 exit status
+
+	at java.base/jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+	at java.base/jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:490)
+	at java.base/java.util.concurrent.ForkJoinTask.getThrowableException(ForkJoinTask.java:600)
+	at java.base/java.util.concurrent.ForkJoinTask.get(ForkJoinTask.java:1006)
+	at com.oracle.svm.hosted.NativeImageGenerator.run(NativeImageGenerator.java:462)
+	at com.oracle.svm.hosted.NativeImageGeneratorRunner.buildImage(NativeImageGeneratorRunner.java:357)
+	at com.oracle.svm.hosted.NativeImageGeneratorRunner.build(NativeImageGeneratorRunner.java:501)
+	at com.oracle.svm.hosted.NativeImageGeneratorRunner.main(NativeImageGeneratorRunner.java:115)
+	at com.oracle.svm.hosted.NativeImageGeneratorRunner$JDK9Plus.main(NativeImageGeneratorRunner.java:528)
+Caused by: java.lang.RuntimeException: There was an error linking the native image: Linker command exited with 1
+
+Linker command executed:
+cc -v -o /home/travis/build/jonashackt/spring-boot-graalvm/target/native-image/spring-boot-graal -z noexecstack -Wl,--gc-sections -Wl,--dynamic-list -Wl,/tmp/SVM-8253584528623373425/exported_symbols.list -Wl,-x -L/tmp/SVM-8253584528623373425 -L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib -L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64 /tmp/SVM-8253584528623373425/spring-boot-graal.o /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libnet.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libjava.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libzip.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libnio.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libextnet.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libffi.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/liblibchelper.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libjvm.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libstrictmath.a -lpthread -ldl -lz -lrt
+
+Linker command ouput:
+Using built-in specs.
+COLLECT_GCC=cc
+COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-linux-gnu/7/lto-wrapper
+OFFLOAD_TARGET_NAMES=nvptx-none
+OFFLOAD_TARGET_DEFAULT=1
+Target: x86_64-linux-gnu
+Configured with: ../src/configure -v --with-pkgversion='Ubuntu 7.4.0-1ubuntu1~18.04.1' --with-bugurl=file:///usr/share/doc/gcc-7/README.Bugs --enable-languages=c,ada,c++,go,brig,d,fortran,objc,obj-c++ --prefix=/usr --with-gcc-major-version-only --program-suffix=-7 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --with-sysroot=/ --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-libmpx --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu
+Thread model: posix
+gcc version 7.4.0 (Ubuntu 7.4.0-1ubuntu1~18.04.1) 
+COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/7/:/usr/lib/gcc/x86_64-linux-gnu/7/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/7/:/usr/lib/gcc/x86_64-linux-gnu/
+LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/7/:/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/7/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-v' '-o' '/home/travis/build/jonashackt/spring-boot-graalvm/target/native-image/spring-boot-graal' '-z' 'noexecstack' '-L/tmp/SVM-8253584528623373425' '-L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib' '-L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64' '-mtune=generic' '-march=x86-64'
+ /usr/lib/gcc/x86_64-linux-gnu/7/collect2 -plugin /usr/lib/gcc/x86_64-linux-gnu/7/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/7/lto-wrapper -plugin-opt=-fresolution=/tmp/ccHdD8kF.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --sysroot=/ --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o /home/travis/build/jonashackt/spring-boot-graalvm/target/native-image/spring-boot-graal -z noexecstack /usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/7/crtbeginS.o -L/tmp/SVM-8253584528623373425 -L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib -L/home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64 -L/usr/lib/gcc/x86_64-linux-gnu/7 -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.. --gc-sections --dynamic-list /tmp/SVM-8253584528623373425/exported_symbols.list -x /tmp/SVM-8253584528623373425/spring-boot-graal.o /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libnet.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libjava.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libzip.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libnio.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/libextnet.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libffi.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/liblibchelper.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libjvm.a /home/travis/.sdkman/candidates/java/20.0.0.r11-grl/lib/svm/clibraries/linux-amd64/libstrictmath.a -lpthread -ldl -lz -lrt -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/7/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/crtn.o
+/usr/bin/ld: final link failed: Memory exhausted
+collect2: error: ld returned 1 exit status
+
+	at com.oracle.svm.hosted.image.NativeBootImageViaCC.handleLinkerFailure(NativeBootImageViaCC.java:424)
+	at com.oracle.svm.hosted.image.NativeBootImageViaCC.write(NativeBootImageViaCC.java:399)
+	at com.oracle.svm.hosted.NativeImageGenerator.doRun(NativeImageGenerator.java:657)
+	at com.oracle.svm.hosted.NativeImageGenerator.lambda$run$0(NativeImageGenerator.java:445)
+	at java.base/java.util.concurrent.ForkJoinTask$AdaptedRunnableAction.exec(ForkJoinTask.java:1407)
+	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:290)
+	at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1020)
+	at java.base/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1656)
+	at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1594)
+	at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:177)
+Error: Image build request failed with exit status 1
+
+real	9m11.937s
+user	17m46.032s
+sys	0m11.720s
 ```
 
 

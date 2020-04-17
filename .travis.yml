@@ -1,6 +1,6 @@
 # use minimal Travis build image so that we could install our own JDK (Graal) and Maven
 # use newest available minimal distro - see https://docs.travis-ci.com/user/languages/minimal-and-generic/
-distro: bionic
+dist: bionic
 language: minimal
 
 install:
