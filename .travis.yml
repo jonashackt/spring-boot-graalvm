@@ -1,10 +1,5 @@
 language: minimal
 
-# Cache SDKMAN downloads
-cache:
-  directories:
-    - /home/travis/.sdkman
-
 install:
   # Install GraalVM with SDKMAN
   - curl -s "https://get.sdkman.io" | bash
