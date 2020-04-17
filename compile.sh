@@ -48,14 +48,10 @@ echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
 time native-image \
   --no-server \
   --no-fallback \
-  --initialize-at-build-time=io.netty.util.NetUtil,io.netty.util.AbstractReferenceCounted,io.netty.channel.DefaultFileRegion \
+  --initialize-at-build-time \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
   -Dspring.graal.remove-unused-autoconfig=true \
   -Dspring.graal.remove-yaml-support=true \
   -cp $CP $MAINCLASS;
-
-# Since GraalVM 19.0, application classes in native images are by default initialized at run time and no longer at image build time.
-# see https://medium.com/graalvm/updates-on-class-initialization-in-graalvm-native-image-generation-c61faca461f7
-# so --initialize-at-build-time \ should'nt be needed anymore
