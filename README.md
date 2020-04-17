@@ -810,21 +810,63 @@ sys	0m11.720s
 
 There's an [official Docker image from Oracle](https://hub.docker.com/r/oracle/graalvm-ce/tags), but this one sadyl lacks both Maven with it's `mvn` command and the `native-image` plugin also not installed.
 
-But again our Spring guys have something for us: There's a derived Docker image https://hub.docker.com/r/springci/graalvm-ce-java8 we can simply use - it adds Maven and Native-Image so we can just use it.
+But we can help ourselves - we just craft a simple [Dockerfile](Dockerfile) for us. We're already used to leverage SDKMAN to install Maven. Therefore we need to install `unzip` and `zip` first, since SDKMAN needs both to work properly:
 
-When I first thought about a Docker usage, I started to craft a `Dockerfile` - but then I realized, that there's [no easy way of using Docker volumes at Docker build time](https://stackoverflow.com/questions/51086724/docker-build-using-volumes-at-build-time). But I really wanted to mount a Docker volume to my local Maven repository like `--volume "$HOME"/.m2:/root/.m2` to prevent the download of all the Spring Maven dependencies over and over again every time we start our Docker container.
+```dockerfile
+# Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
+# https://hub.docker.com/r/oracle/graalvm-ce image
+FROM oracle/graalvm-ce:20.0.0-java11
 
-So I went with another way: We simply use a `docker run` command, that will compile our native Spring Boot app into our project's working directory (with `--volume $(pwd):/build`):
+# For SDKMAN to work we need unzip & zip
+RUN yum install -y unzip zip
 
+RUN \
+    # Install SDKMAN
+    curl -s "https://get.sdkman.io" | bash; \
+    source "$HOME/.sdkman/bin/sdkman-init.sh"; \
+    sdk install maven; \
+    # Install GraalVM Native Image
+    gu install native-image;
+
+RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && mvn --version
+
+RUN native-image --version
+
+# Always use source sdkman-init.sh before any command, so that we will be able to use 'mvn' command
+ENTRYPOINT bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && $0 $1"
 ```
+
+In order to enable the `mvn` command for a user of our Docker image, we craft a slightly more interesting `ENTRYPOINT` that always prefixes commands with `"source $HOME/.sdkman/bin/sdkman-init.sh`. We also use to parameters with `&& $0 $1` since we need to pass our `Mainclass` also.
+
+Now let's build our Image with:
+
+```shell script
+docker build . --tag=graalvm-ce:20.0.0-java11-mvn-native-image
+```
+
+Now we should be able to launch our GraalVM Native Image compilation inside official Oracle GraalVM image with:
+
+```shell script
 docker run -it --rm \
     --volume $(pwd):/build \
     --workdir /build \
     --volume "$HOME"/.m2:/root/.m2 \
-    springci/graalvm-ce-java8:20.1.0-dev_20200125-1203 ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+    graalvm-ce:20.0.0-java11-mvn-native-image ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
 ```
 
-> There's no `latest` image of `springci/graalvm-ce-java8` - so we need to explicitely use a tag like `springci/graalvm-ce-java8:20.1.0-dev_20200125-1203`
+When I first thought about a Docker usage, I wanted to pack this build into a `Dockerfile` also - but then I realized, that there's [no easy way of using Docker volumes at Docker build time](https://stackoverflow.com/questions/51086724/docker-build-using-volumes-at-build-time). But I really wanted to mount a Docker volume to my local Maven repository like `--volume "$HOME"/.m2:/root/.m2` to prevent the download of all the Spring Maven dependencies over and over again every time we start our Docker container.
+
+So I went with another way: We simply use a `docker run` command, that will compile our native Spring Boot app into our project's working directory (with `--volume $(pwd):/build`).
+
+### Tackling 'Exception in thread "native-image pid watcher"' error
+
+Sometimes the `docker run` seems to take ages to complete - and then a `java.lang.OutOfMemoryError` is thrown into the log:
+
+```
+14:06:34.609 [ForkJoinPool-2-worker-3] DEBUG io.netty.handler.codec.compression.ZlibCodecFactory - -Dio.netty.noJdkZlibEncoder: false
+Exception in thread "native-image pid watcher"
+Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "native-image pid watcher"
+```
 
 
 
@@ -855,3 +897,5 @@ https://github.com/spring-projects-experimental/spring-graal-native#install-graa
 Current docs: https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html
 
 https://medium.com/graalvm/updates-on-class-initialization-in-graalvm-native-image-generation-c61faca461f7
+
+https://e.printstacktrace.blog/building-java-and-maven-docker-images-using-parallelized-jenkins-pipeline-and-sdkman/
