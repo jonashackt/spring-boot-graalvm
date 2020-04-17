@@ -27,3 +27,6 @@ install:
 script:
   # Run GraalVM Native Image compilation of Spring Boot App
   - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+
+  # Try to run our Native Spring Boot App
+  - ./target/native-image/spring-boot-graal

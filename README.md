@@ -712,6 +712,10 @@ Warning: class initialization of class io.netty.handler.ssl.JettyNpnSslEngine fa
 [spring-boot-graal:5634]        write:   1,472.98 ms,  6.23 GB
 ```
 
+Now our TravisCI builds should run a full native image compilation - see this build for example!
+
+![successfull-travis-compile](screenshots/successfull-travis-compile.png)
+
 ### Tackling the 'There was an error linking the native image /usr/bin/ld: final link failed: Memory exhausted' error
 
 I now had Travis finally compiling my Spring Boot App - but with a last error (you can [see full log here](https://travis-ci.org/github/jonashackt/spring-boot-graalvm)):
