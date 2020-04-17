@@ -49,6 +49,9 @@ time native-image \
   --no-server \
   --no-fallback \
   --initialize-at-build-time \
+  --initialize-at-run-time=io.netty.util.NetUtil \
+  --initialize-at-run-time=io.netty.util.AbstractReferenceCounted \
+  --initialize-at-run-time=io.netty.channel.DefaultFileRegion \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
