@@ -52,6 +52,8 @@ time native-image \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
+  --allow-incomplete-classpath \
+  --report-unsupported-elements-at-runtime \
   -DremoveUnusedAutoconfig=true \
   -DremoveYamlSupport=true \
   -cp $CP $MAINCLASS;
