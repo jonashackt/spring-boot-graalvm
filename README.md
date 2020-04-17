@@ -572,3 +572,5 @@ https://spring.io/blog/2020/04/16/spring-tips-the-graalvm-native-image-builder-f
 https://github.com/spring-projects-experimental/spring-graal-native#install-graalvm-native
 
 Current docs: https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html
+
+https://medium.com/graalvm/updates-on-class-initialization-in-graalvm-native-image-generation-c61faca461f7
