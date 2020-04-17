@@ -48,7 +48,7 @@ echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
 time native-image \
   --no-server \
   --no-fallback \
-  --initialize-at-run-time=io.netty.util.NetUtil,io.netty.util.AbstractReferenceCounted,io.netty.channel.DefaultFileRegion \
+  --initialize-at-build-time=io.netty.util.NetUtil,io.netty.util.AbstractReferenceCounted,io.netty.channel.DefaultFileRegion \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
