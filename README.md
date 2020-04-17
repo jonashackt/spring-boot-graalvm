@@ -525,6 +525,194 @@ Second: __Don't use a `language: java` or the default linux distros like `distro
 Therefore we simply use the `language: minimal`, which is [a simple way of getting our Travis builds based on a basic Travis build environment without pre-installed JDKs or Maven](https://stackoverflow.com/a/44738181/4964553) together with `distro: bionic` which will tell Travis to use the latest available `minimal` build image (see https://docs.travis-ci.com/user/languages/minimal-and-generic/).
 
 
+### Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error
+
+I wasted some hours on this one! With a working configuration on my local dev machine, I couldn't get TravisCI to run my Native Image compilation successfully. I overlooked the following exception, that could also be found in this project's TravisCI build logs ([like this one](https://travis-ci.org/github/jonashackt/spring-boot-graalvm/builds/676166548)):
+
+```
+12:25:29.315 [ForkJoinPool-2-worker-3] DEBUG io.netty.util.internal.NativeLibraryLoader - Unable to load the library 'netty_transport_native_epoll_x86_64', trying other loading mechanism.
+java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]
+	at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2660)
+	at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:829)
+	at java.base/java.lang.System.loadLibrary(System.java:1871)
+	at io.netty.util.internal.NativeLibraryUtil.loadLibrary(NativeLibraryUtil.java:38)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+	at io.netty.util.internal.NativeLibraryLoader$1.run(NativeLibraryLoader.java:371)
+	at java.base/java.security.AccessController.doPrivileged(Native Method)
+	at io.netty.util.internal.NativeLibraryLoader.loadLibraryByHelper(NativeLibraryLoader.java:363)
+	at io.netty.util.internal.NativeLibraryLoader.loadLibrary(NativeLibraryLoader.java:341)
+	at io.netty.util.internal.NativeLibraryLoader.load(NativeLibraryLoader.java:136)
+	at io.netty.channel.epoll.Native.loadNativeLibrary(Native.java:231)
+	at io.netty.channel.epoll.Native.<clinit>(Native.java:58)
+	at io.netty.channel.epoll.Epoll.<clinit>(Epoll.java:39)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1042)
+	at jdk.unsupported/sun.misc.Unsafe.ensureClassInitialized(Unsafe.java:698)
+	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.ensureClassInitialized(ConfigurableClassInitialization.java:167)
+	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.java:560)
+	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.java:130)
+	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.maybeInitializeHosted(ConfigurableClassInitialization.java:158)
+	at com.oracle.svm.hosted.SVMHost.registerType(SVMHost.java:198)
+	at com.oracle.graal.pointsto.meta.AnalysisUniverse.createType(AnalysisUniverse.java:264)
+	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookupAllowUnresolved(AnalysisUniverse.java:205)
+	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookup(AnalysisUniverse.java:182)
+	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookup(AnalysisUniverse.java:75)
+	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess$1.apply(UniverseMetaAccess.java:52)
+	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess$1.apply(UniverseMetaAccess.java:49)
+	at java.base/java.util.concurrent.ConcurrentHashMap.computeIfAbsent(ConcurrentHashMap.java:1705)
+	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess.lookupJavaType(UniverseMetaAccess.java:84)
+	at com.oracle.graal.pointsto.meta.AnalysisMetaAccess.lookupJavaType(AnalysisMetaAccess.java:47)
+	at com.oracle.graal.pointsto.meta.AnalysisMetaAccess.lookupJavaType(AnalysisMetaAccess.java:39)
+	at com.oracle.svm.hosted.snippets.ReflectionPlugins.processForName(ReflectionPlugins.java:164)
+	at com.oracle.svm.hosted.snippets.ReflectionPlugins.access$000(ReflectionPlugins.java:62)
+	at com.oracle.svm.hosted.snippets.ReflectionPlugins$1.apply(ReflectionPlugins.java:94)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.execute(InvocationPlugin.java:213)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.tryInvocationPlugin(BytecodeParser.java:2204)
+	at com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase$AnalysisBytecodeParser.tryInvocationPlugin(AnalysisGraphBuilderPhase.java:67)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.appendInvoke(BytecodeParser.java:1914)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.genInvokeStatic(BytecodeParser.java:1679)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.genInvokeStatic(BytecodeParser.java:1659)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.processBytecode(BytecodeParser.java:5288)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.iterateBytecodesForBlock(BytecodeParser.java:3397)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.processBlock(BytecodeParser.java:3204)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.build(BytecodeParser.java:1085)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.buildRootMethod(BytecodeParser.java:979)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.GraphBuilderPhase$Instance.run(GraphBuilderPhase.java:84)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.run(Phase.java:49)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.BasePhase.apply(BasePhase.java:197)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.apply(Phase.java:42)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.apply(Phase.java:38)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder.parse(MethodTypeFlowBuilder.java:221)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder.apply(MethodTypeFlowBuilder.java:340)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlow.doParse(MethodTypeFlow.java:310)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlow.ensureParsed(MethodTypeFlow.java:300)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlow.addContext(MethodTypeFlow.java:107)
+	at com.oracle.graal.pointsto.BigBang$1.run(BigBang.java:385)
+	at com.oracle.graal.pointsto.util.CompletionExecutor.lambda$execute$0(CompletionExecutor.java:171)
+	at java.base/java.util.concurrent.ForkJoinTask$RunnableExecuteAction.exec(ForkJoinTask.java:1426)
+	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:290)
+	at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1020)
+	at java.base/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1656)
+	at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1594)
+	at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:177)
+12:25:29.321 [ForkJoinPool-2-worker-3] DEBUG io.netty.util.internal.NativeLibraryLoader - netty_transport_native_epoll_x86_64 cannot be loaded from java.library.path, now trying export to -Dio.netty.native.workdir: /tmp
+java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]
+	at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2660)
+	at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:829)
+	at java.base/java.lang.System.loadLibrary(System.java:1871)
+	at io.netty.util.internal.NativeLibraryUtil.loadLibrary(NativeLibraryUtil.java:38)
+	at io.netty.util.internal.NativeLibraryLoader.loadLibrary(NativeLibraryLoader.java:351)
+	at io.netty.util.internal.NativeLibraryLoader.load(NativeLibraryLoader.java:136)
+	at io.netty.channel.epoll.Native.loadNativeLibrary(Native.java:231)
+	at io.netty.channel.epoll.Native.<clinit>(Native.java:58)
+	at io.netty.channel.epoll.Epoll.<clinit>(Epoll.java:39)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1042)
+	at jdk.unsupported/sun.misc.Unsafe.ensureClassInitialized(Unsafe.java:698)
+	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.ensureClassInitialized(ConfigurableClassInitialization.java:167)
+	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.java:560)
+	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.java:130)
+	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.maybeInitializeHosted(ConfigurableClassInitialization.java:158)
+	at com.oracle.svm.hosted.SVMHost.registerType(SVMHost.java:198)
+	at com.oracle.graal.pointsto.meta.AnalysisUniverse.createType(AnalysisUniverse.java:264)
+	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookupAllowUnresolved(AnalysisUniverse.java:205)
+	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookup(AnalysisUniverse.java:182)
+	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookup(AnalysisUniverse.java:75)
+	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess$1.apply(UniverseMetaAccess.java:52)
+	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess$1.apply(UniverseMetaAccess.java:49)
+	at java.base/java.util.concurrent.ConcurrentHashMap.computeIfAbsent(ConcurrentHashMap.java:1705)
+	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess.lookupJavaType(UniverseMetaAccess.java:84)
+	at com.oracle.graal.pointsto.meta.AnalysisMetaAccess.lookupJavaType(AnalysisMetaAccess.java:47)
+	at com.oracle.graal.pointsto.meta.AnalysisMetaAccess.lookupJavaType(AnalysisMetaAccess.java:39)
+	at com.oracle.svm.hosted.snippets.ReflectionPlugins.processForName(ReflectionPlugins.java:164)
+	at com.oracle.svm.hosted.snippets.ReflectionPlugins.access$000(ReflectionPlugins.java:62)
+	at com.oracle.svm.hosted.snippets.ReflectionPlugins$1.apply(ReflectionPlugins.java:94)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.execute(InvocationPlugin.java:213)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.tryInvocationPlugin(BytecodeParser.java:2204)
+	at com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase$AnalysisBytecodeParser.tryInvocationPlugin(AnalysisGraphBuilderPhase.java:67)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.appendInvoke(BytecodeParser.java:1914)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.genInvokeStatic(BytecodeParser.java:1679)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.genInvokeStatic(BytecodeParser.java:1659)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.processBytecode(BytecodeParser.java:5288)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.iterateBytecodesForBlock(BytecodeParser.java:3397)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.processBlock(BytecodeParser.java:3204)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.build(BytecodeParser.java:1085)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.buildRootMethod(BytecodeParser.java:979)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.java.GraphBuilderPhase$Instance.run(GraphBuilderPhase.java:84)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.run(Phase.java:49)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.BasePhase.apply(BasePhase.java:197)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.apply(Phase.java:42)
+	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.apply(Phase.java:38)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder.parse(MethodTypeFlowBuilder.java:221)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder.apply(MethodTypeFlowBuilder.java:340)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlow.doParse(MethodTypeFlow.java:310)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlow.ensureParsed(MethodTypeFlow.java:300)
+	at com.oracle.graal.pointsto.flow.MethodTypeFlow.addContext(MethodTypeFlow.java:107)
+	at com.oracle.graal.pointsto.BigBang$1.run(BigBang.java:385)
+	at com.oracle.graal.pointsto.util.CompletionExecutor.lambda$execute$0(CompletionExecutor.java:171)
+	at java.base/java.util.concurrent.ForkJoinTask$RunnableExecuteAction.exec(ForkJoinTask.java:1426)
+	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:290)
+	at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1020)
+	at java.base/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1656)
+	at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1594)
+	at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:177)
+	Suppressed: java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]
+		at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2660)
+		at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:829)
+		at java.base/java.lang.System.loadLibrary(System.java:1871)
+		at io.netty.util.internal.NativeLibraryUtil.loadLibrary(NativeLibraryUtil.java:38)
+		at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+		at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+		at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+		at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+		at io.netty.util.internal.NativeLibraryLoader$1.run(NativeLibraryLoader.java:371)
+		at java.base/java.security.AccessController.doPrivileged(Native Method)
+		at io.netty.util.internal.NativeLibraryLoader.loadLibraryByHelper(NativeLibraryLoader.java:363)
+		at io.netty.util.internal.NativeLibraryLoader.loadLibrary(NativeLibraryLoader.java:341)
+		... 54 common frames omitted
+```
+
+After playing around with parameters of the `native-image` command with no luck at all, I finally found a configuration inside the [spring-graal-native-samples/function-netty](https://github.com/spring-projects-experimental/spring-graal-native/tree/master/spring-graal-native-samples/function-netty) example project's [pom.xml](https://github.com/spring-projects-experimental/spring-graal-native/blob/master/spring-graal-native-samples/function-netty/pom.xml):
+
+```xml
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webflux</artifactId>
+        <exclusions>
+            <exclusion>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-transport-native-epoll</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-http2</artifactId>
+            </exclusion>
+        </exclusions>
+    </dependency>
+```
+
+Both `netty-transport-native-epoll` and `netty-codec-http2` were excluded from the `spring-boot-starter-webflux` dependency - and with that inside my project's pom.xml, the Travis build __went much further!__ It really [seemed to do the compilation](https://travis-ci.org/github/jonashackt/spring-boot-graalvm):
+
+```
+Warning: class initialization of class io.netty.handler.ssl.JettyNpnSslEngine failed with exception java.lang.NoClassDefFoundError: org/eclipse/jetty/npn/NextProtoNego$Provider. This class will be initialized at run time because option --allow-incomplete-classpath is used for image building. Use the option --initialize-at-run-time=io.netty.handler.ssl.JettyNpnSslEngine to explicitly request delayed initialization of this class.
+[spring-boot-graal:5634]   (typeflow): 238,622.47 ms,  6.23 GB
+[spring-boot-graal:5634]    (objects): 122,937.15 ms,  6.23 GB
+[spring-boot-graal:5634]   (features):  10,311.79 ms,  6.23 GB
+[spring-boot-graal:5634]     analysis: 379,203.23 ms,  6.23 GB
+[spring-boot-graal:5634]     (clinit):   2,542.77 ms,  6.23 GB
+[spring-boot-graal:5634]     universe:   9,890.85 ms,  6.23 GB
+[spring-boot-graal:5634]      (parse):  20,901.16 ms,  6.23 GB
+[spring-boot-graal:5634]     (inline):  14,131.55 ms,  6.23 GB
+[spring-boot-graal:5634]    (compile):  94,847.99 ms,  6.23 GB
+[spring-boot-graal:5634]      compile: 133,862.12 ms,  6.23 GB
+[spring-boot-graal:5634]        image:   8,635.21 ms,  6.23 GB
+[spring-boot-graal:5634]        write:   1,472.98 ms,  6.23 GB
+```
+
+
 # Use Docker to compile a Spring Boot App with GraalVM
 
 There's an [official Docker image from Oracle](https://hub.docker.com/r/oracle/graalvm-ce/tags), but this one sadyl lacks both Maven with it's `mvn` command and the `native-image` plugin also not installed.
