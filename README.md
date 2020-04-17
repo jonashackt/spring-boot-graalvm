@@ -489,6 +489,7 @@ As we are used to test-driven development and we rely on very new code, which is
 In order to run the compilation process, we need to [install GraalVM and GraalVM Native Image first on TravisCI](https://stackoverflow.com/a/61254927/4964553). Therefore let's have a look into our [.travis.yml](.travis.yml):
 
 ```yaml
+distro: bionic
 language: minimal
 
 install:
@@ -521,7 +522,7 @@ There are two main things to notice here: First we simply leverage the power of 
 
 Second: __Don't use a `language: java` or the default linux distros like `distro: bionic`!__, because they ship with pre-installed Maven versions, which is configured to use the pre-installed OpenJDK - and __NOT our GraalVM installation__.
 
-Therefore we simply use the `language: minimal`, which is [a simple way of getting our Travis builds based on a basic Travis build environment without pre-installed JDKs or Maven](https://stackoverflow.com/a/44738181/4964553).
+Therefore we simply use the `language: minimal`, which is [a simple way of getting our Travis builds based on a basic Travis build environment without pre-installed JDKs or Maven](https://stackoverflow.com/a/44738181/4964553) together with `distro: bionic` which will tell Travis to use the latest available `minimal` build image (see https://docs.travis-ci.com/user/languages/minimal-and-generic/).
 
 
 # Use Docker to compile a Spring Boot App with GraalVM
