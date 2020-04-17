@@ -490,8 +490,6 @@ In order to run the compilation process, we need to install GraalVM and GraalVM 
 
 ```yaml
 language: java
-jdk:
-  - openjdk11
 
 install:
   # Install GraalVM with SDKMAN
