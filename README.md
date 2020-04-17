@@ -6,7 +6,7 @@
 [![versionjava](https://img.shields.io/badge/graalvm_ce-20.0.0-orange.svg?logo=java)](https://github.com/graalvm/homebrew-tap)
 
 
-An example REST based Spring Boot application, that runs with GraalVM
+This example project shows how to compile a Webflux based Spring Boot application into a Native App using GraalVM Native Image
 
 > This project here shows a technical demo of what's possible right now - stable GraalVM Native Image support for Spring Boot could be expected with [Spring Frameworks 5.3 release planned in October 2020](https://spring.io/blog/2019/12/03/spring-framework-maintenance-roadmap-in-2020-including-4-3-eol), on which Spring Boot 2.4 will be based.
 

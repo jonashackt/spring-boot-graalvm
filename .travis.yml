@@ -29,4 +29,4 @@ script:
   - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
 
   # Try to run our Native Spring Boot App
-  - timeout 10 ./target/native-image/spring-boot-graal
+  #- ./target/native-image/spring-boot-graal
