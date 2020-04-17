@@ -1,9 +1,9 @@
-dist: bionic
+language: minimal
 
 # Cache SDKMAN downloads
-#cache:
-#  directories:
-#    - /home/travis/.sdkman
+cache:
+  directories:
+    - /home/travis/.sdkman
 
 install:
   # Install GraalVM with SDKMAN
