@@ -858,7 +858,7 @@ When I first thought about a Docker usage, I wanted to pack this build into a `D
 
 So I went with another way: We simply use a `docker run` command, that will compile our native Spring Boot app into our project's working directory (with `--volume $(pwd):/build`).
 
-### Tackling 'Exception in thread "native-image pid watcher"' error
+### Tackling 'Exception java.lang.OutOfMemoryError in thread "native-image pid watcher"' error
 
 Sometimes the `docker run` seems to take ages to complete - and then a `java.lang.OutOfMemoryError` is thrown into the log:
 
@@ -868,6 +868,11 @@ Exception in thread "native-image pid watcher"
 Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "native-image pid watcher"
 ```
 
+Then it is very likely that your Docker Engine has not enough RAM it is able to use! In my Mac installation the default is only `2.00 GB`:
+
+[docker-mac-memory](screenshots/docker-mac-memory.png)
+
+As [stated in the comments of this so q&a](https://stackoverflow.com/questions/57935533/native-image-building-process-is-frozen-in-quarkus), you have to give Docker much more memory since the GraalVM Native Image compilation process is really RAM intensive. I had a working local compilation in the Docker Container when I gave Docker `12.00 GB` of RAM.
 
 
 # Links
