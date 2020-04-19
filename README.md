@@ -1097,9 +1097,17 @@ And was sure to get into this error in the firt place! A `Error: Image build req
 
 And I guess we wont come far here, since the free Heroku dyno only guarantees us `512MB` of RAM :( ([see Dyno Types](https://devcenter.heroku.com/articles/dyno-types)))
 
+
+
+
+
+### Work around the Heroku 512MB RAM cap: Autorelease on Docker Hub
+
+Well I think we ended up trapped in a dead end! Heroku simply delivers not enough memory with their free Dynos to successfully run a GraalVM Native compilation on it.
+
 So maybe we should take another way: What about seperating the build process from the actual `docker run` later on Heroku?
 
-We could try to __autorelease to Docker Hub on hub.docker.com:__
+We could try to __autorelease to Docker Hub on hub.docker.com:__ 
 
 Therefore head over to the repositories tab in Docker Hub and click `Create Repository`:
 
@@ -1115,7 +1123,68 @@ docker run -e "PORT=8087" -p 8087:8087 jonashackt/spring-boot-graalvm:latest
 
 This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app locally.
 
+> But this way also has it's downsides: The process takes far to long and the automatic builds do not work as I expected them to: Do the Docker build asap after a push into our repo!
 
+
+### Work around the Heroku 512MB RAM cap: Building & Releasing our Dockerimage with TravisCI
+
+So we need to do the Docker build on another platform - why not simply use Travis?! It already proofed to work directly on the host, why not also [using the Travis Docker service](https://docs.travis-ci.com/user/docker/)?!
+
+Leveraging [Travis jobs feature](https://docs.travis-ci.com/user/build-stages/), we can also do both in parallel - just have a look at the following screenshot:
+
+![travis-parallel-jobs-direct-and-docker](screenshots/travis-parallel-jobs-direct-and-docker.png)
+
+
+Therefore we implement two separate Travis jobs `"Native Image compile on Travis Host"` and `"Native Image compile in Docker on Travis & Push to Heroku Container Registry"` inside our [.travis.yml](.travis.yml) and include the `docker` services:
+
+```yaml
+# use minimal Travis build image so that we could install our own JDK (Graal) and Maven
+# use newest available minimal distro - see https://docs.travis-ci.com/user/languages/minimal-and-generic/
+dist: bionic
+language: minimal
+
+services:
+  - docker
+
+jobs:
+  include:
+    - script:
+        # Install GraalVM with SDKMAN
+        - curl -s "https://get.sdkman.io" | bash
+        - source "$HOME/.sdkman/bin/sdkman-init.sh"
+        - sdk install java 20.0.0.r11-grl
+
+        # Check if GraalVM was installed successfully
+        - java -version
+
+        # Install Maven, that uses GraalVM for later builds
+        - sdk install maven
+
+        # Show Maven using GraalVM JDK
+        - mvn --version
+
+        # Install GraalVM Native Image
+        - gu install native-image
+
+        # Check if Native Image was installed properly
+        - native-image --version
+
+        # Run GraalVM Native Image compilation of Spring Boot App
+        - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+
+      name: "Native Image compile on Travis Host"
+
+    - script:
+        # Compile with Docker
+        - docker build . --tag=spring-boot-graal
+      name: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"
+```
+
+Now we should be able to finally [push the build Docker image into Heroku's Container Registry](https://devcenter.heroku.com/articles/container-registry-and-runtime#using-a-ci-cd-platform), from where we're able to run our Spring Boot Native app later on.
+
+Therefore we need to [configure some environment variables in Travis in order to push](https://docs.travis-ci.com/user/docker/#pushing-a-docker-image-to-a-registry) to Heroku's Container Registry inside our TravisCI job's settings: `DOCKER_USERNAME` and `DOCKER_PASSWORD`. The first is your Heroku eMail, the latter is your Heroku API key. Be sure to prevent displaying the values in the build log:
+
+![travis-env-vars-heroku](screenshots/travis-env-vars-heroku.png)
 
 
 Now head over to [http://localhost:8098/](http://localhost:8098/) and see the app live :)
