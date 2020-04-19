@@ -1080,6 +1080,45 @@ With all that setup, the next push to your GitHub repository will build and comp
 After a successful deployment to Heroku simply access your App at https://spring-boot-graal.herokuapp.com/hello
 
 
+### Tackling the 'Error: Image build request failed with exit status 137'
+
+My first attempts on Heroku lead to the following error:
+
+```
+Error: Image build request failed with exit status 137
+real	2m51.946s
+user	2m9.594s
+sys	0m19.085s
+The command '/bin/sh -c source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication' returned a non-zero code: 137
+```
+
+And was sure to get into this error in the firt place! A `Error: Image build request failed with exit status 137` happens usually [when Docker does not have enough memory](https://codefresh.io/docs/docs/troubleshooting/common-issues/error-code-137/). 
+
+And I guess we wont come far here, since the free Heroku dyno only guarantees us `512MB` of RAM :( ([see Dyno Types](https://devcenter.heroku.com/articles/dyno-types)))
+
+So maybe we should take another way: What about seperating the build process from the actual `docker run` later on Heroku?
+
+We could try to __autorelease to Docker Hub on hub.docker.com:__
+
+Therefore head over to the repositories tab in Docker Hub and click `Create Repository`:
+
+![docker-hub-create-repo](screenshots/docker-hub-create-repo.png)
+
+As the docs state, there are some config options to [setup automated builds](https://docs.docker.com/docker-hub/builds/).
+
+Finally, we should see our Docker images released on https://hub.docker.com/r/jonashackt/spring-boot-graalvm and could run this app simply by executing:
+
+```
+docker run -e "PORT=8087" -p 8087:8087 jonashackt/spring-boot-graalvm:latest
+```
+
+This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app locally.
+
+
+
+
+Now head over to [http://localhost:8098/](http://localhost:8098/) and see the app live :)
+
 # Links
 
 https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support
