@@ -32,6 +32,6 @@ MAINTAINER Jonas Hecht
 COPY --from=0 "/build/target/native-image/spring-boot-graal" spring-boot-graal
 
 # Fire up our Spring Boot Native app by default
-CMD [ "sh", "-c", "./spring-boot-graal" ]
+CMD [ "sh", "-c", "./spring-boot-graal -Dserver.port=$PORT" ]
 
 

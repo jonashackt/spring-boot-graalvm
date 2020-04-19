@@ -858,6 +858,11 @@ When I first thought about a Docker usage, I wanted to pack this build into a `D
 
 So I went with another way: We simply use a `docker run` command, that will compile our native Spring Boot app into our project's working directory (with `--volume $(pwd):/build`).
 
+The resulting `spring-boot-graal` native App should be ready after some minutes of heavy compilation.
+
+__But!__ We're not able to run it! Hell yeah - because we turned our platform independend Java App into a platform dependend one! That's the price for speed I guess :)
+
+
 ### Tackling 'Exception java.lang.OutOfMemoryError in thread "native-image pid watcher"' error
 
 Sometimes the `docker run` seems to take ages to complete - and then a `java.lang.OutOfMemoryError` is thrown into the log:
@@ -987,6 +992,51 @@ $ docker run -p 8080:8080 spring-boot-graal
 
 Now simply access your App via http://localhost:8080/hello
 
+
+# Running Spring Boot Graal Native Apps on Heroku
+
+Finally we are where we wanted to be in the first place! We're able to run our natively compiled Spring Boot Apps inside Docker containers. It should be easy to deploy those to [a cloud provider like Heroku](https://heroku.com)!
+
+Now as we move forward to a deployment of our Spring Boot Native app on a cloud provider's Docker infrastructure, we need to have our Spring Boot Native app's port configurable in a dynamic fashion! Most cloud providers want to dynamically set this port from the outside - as [we can see in Heroku for example](https://devcenter.heroku.com/articles/setting-the-http-port-for-java-applications).
+
+[As the Heroku docs state]( https://devcenter.heroku.com/articles/container-registry-and-runtime#dockerfile-commands-and-runtime):
+                                                                                                                    
+> The web process must listen for HTTP traffic on $PORT, which is set by Heroku. EXPOSE in Dockerfile is not respected, but can be used for local testing. Only HTTP requests are supported.
+
+
+### Configure the Spring Boot Native app's port dynamically inside a Docker container
+
+To achieve that, we need to somehow pass a port variable to our Spring Boot Native app from command line. Since the GraalVM support is just in its early stages, we can't rely on a huge documentation. But as this is a similar problem other frameworks also needed to solve, I thought about [Quarkus.io](https://quarkus.io/) which has been around for some time now - and should have had exactly this problem already.
+
+And [there's the stackoverflow answer](https://stackoverflow.com/a/55043637/4964553) :) With Quarkus, you simply need to pass the port as `-D` parameter like `-Dquarkus.http.port=8081` to the native app.
+
+[Could this be mapped onto Spring Boot too?](https://stackoverflow.com/questions/61302412/how-to-configure-the-port-of-a-spring-boot-app-thats-natively-compiled-by-graal) Luckily yes! Just run your Spring Boot native app with
+
+```shell script
+./spring-boot-graal -Dserver.port=8087
+```
+
+And your App starts using port `8087` :)
+
+Now we are able to pass the port dynamically from a `docker run` command. Therefore we need to make a small change to our [Dockerfile](Dockerfile):
+
+```dockerfile
+...
+# Add Spring Boot Native app spring-boot-graal to Container
+COPY --from=0 "/build/target/native-image/spring-boot-graal" spring-boot-graal
+
+# Fire up our Spring Boot Native app by default
+CMD [ "sh", "-c", "./spring-boot-graal -Dserver.port=$PORT" ]
+```
+
+With this we are able to run our Dockerized Spring Boot Native App with a dynamic port setting from command line like this:
+
+```
+docker run -e "PORT=8087" -p 8087:8087 spring-boot-graal
+```
+
+Finally try to access your app at http://localhost:8087/hello
+
 # Links
 
 https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support
@@ -1016,3 +1066,5 @@ Current docs: https://repo.spring.io/milestone/org/springframework/experimental/
 https://medium.com/graalvm/updates-on-class-initialization-in-graalvm-native-image-generation-c61faca461f7
 
 https://e.printstacktrace.blog/building-java-and-maven-docker-images-using-parallelized-jenkins-pipeline-and-sdkman/
+
+https://stackoverflow.com/questions/61302412/how-to-configure-the-port-of-a-spring-boot-app-thats-natively-compiled-by-graal
