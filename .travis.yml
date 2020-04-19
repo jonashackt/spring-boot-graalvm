@@ -8,31 +8,31 @@ services:
 
 jobs:
   include:
-    - script:
-        # Install GraalVM with SDKMAN
-        - curl -s "https://get.sdkman.io" | bash
-        - source "$HOME/.sdkman/bin/sdkman-init.sh"
-        - sdk install java 20.0.0.r11-grl
-
-        # Check if GraalVM was installed successfully
-        - java -version
-
-        # Install Maven, that uses GraalVM for later builds
-        - sdk install maven
-
-        # Show Maven using GraalVM JDK
-        - mvn --version
-
-        # Install GraalVM Native Image
-        - gu install native-image
-
-        # Check if Native Image was installed properly
-        - native-image --version
-
-        # Run GraalVM Native Image compilation of Spring Boot App
-        - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
-
-      name: "Native Image compile on Travis Host"
+#    - script:
+#        # Install GraalVM with SDKMAN
+#        - curl -s "https://get.sdkman.io" | bash
+#        - source "$HOME/.sdkman/bin/sdkman-init.sh"
+#        - sdk install java 20.0.0.r11-grl
+#
+#        # Check if GraalVM was installed successfully
+#        - java -version
+#
+#        # Install Maven, that uses GraalVM for later builds
+#        - sdk install maven
+#
+#        # Show Maven using GraalVM JDK
+#        - mvn --version
+#
+#        # Install GraalVM Native Image
+#        - gu install native-image
+#
+#        # Check if Native Image was installed properly
+#        - native-image --version
+#
+#        # Run GraalVM Native Image compilation of Spring Boot App
+#        - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+#
+#      name: "Native Image compile on Travis Host"
 
     - script:
         # Login into Heroku Container Registry first, so that we can push our Image later
