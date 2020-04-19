@@ -8,9 +8,7 @@ services:
 
 jobs:
   include:
-
-    - stage: "Native Image compile on Travis Host"
-      install:
+    - script:
         # Install GraalVM with SDKMAN
         - curl -s "https://get.sdkman.io" | bash
         - source "$HOME/.sdkman/bin/sdkman-init.sh"
@@ -31,12 +29,12 @@ jobs:
         # Check if Native Image was installed properly
         - native-image --version
 
-      script:
         # Run GraalVM Native Image compilation of Spring Boot App
         - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
 
-    - stage: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"
-      script:
+      name: "Native Image compile on Travis Host"
+
+    - script:
+        # Compile with Docker
         - docker build . --tag=spring-boot-graal
-
-
+      name: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"
