@@ -5,6 +5,7 @@
 [![versionspringboot](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27parent%27%5D%2F%2A%5Blocal-name%28%29%3D%27version%27%5D&label=springboot)](https://github.com/spring-projects/spring-boot)
 [![versionjava](https://img.shields.io/badge/graalvm_ce-20.0.0-orange.svg?logo=java)](https://sdkman.io/jdks#Oracle)
 [![Deployed on Heroku](https://img.shields.io/badge/heroku-deployed-blueviolet.svg?logo=heroku&)](https://spring-boot-graal.herokuapp.com/hello)
+[![Pushed to Docker Hub](https://img.shields.io/badge/docker_hub-released-blue.svg?logo=docker)](https://hub.docker.com/r/jonashackt/spring-boot-graalvm)
 
 
 This example project shows how to compile a Webflux based Spring Boot application into a Native App using GraalVM Native Image

@@ -3,30 +3,40 @@
 dist: bionic
 language: minimal
 
-install:
-  # Install GraalVM with SDKMAN
-  - curl -s "https://get.sdkman.io" | bash
-  - source "$HOME/.sdkman/bin/sdkman-init.sh"
-  - sdk install java 20.0.0.r11-grl
+services:
+  - docker
 
-  # Check if GraalVM was installed successfully
-  - java -version
+jobs:
+  include:
 
-  # Install Maven, that uses GraalVM for later builds
-  - sdk install maven
+    - stage: "Native Image compile on Travis Host"
+      install:
+        # Install GraalVM with SDKMAN
+        - curl -s "https://get.sdkman.io" | bash
+        - source "$HOME/.sdkman/bin/sdkman-init.sh"
+        - sdk install java 20.0.0.r11-grl
 
-  # Show Maven using GraalVM JDK
-  - mvn --version
+        # Check if GraalVM was installed successfully
+        - java -version
 
-  # Install GraalVM Native Image
-  - gu install native-image
+        # Install Maven, that uses GraalVM for later builds
+        - sdk install maven
 
-  # Check if Native Image was installed properly
-  - native-image --version
+        # Show Maven using GraalVM JDK
+        - mvn --version
 
-script:
-  # Run GraalVM Native Image compilation of Spring Boot App
-  - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+        # Install GraalVM Native Image
+        - gu install native-image
 
-  # Try to run our Native Spring Boot App
-  #- ./target/native-image/spring-boot-graal
+        # Check if Native Image was installed properly
+        - native-image --version
+
+      script:
+        # Run GraalVM Native Image compilation of Spring Boot App
+        - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+
+    - stage: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"
+      script:
+        - docker build . --tag=spring-boot-graal
+
+
