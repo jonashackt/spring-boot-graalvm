@@ -3,7 +3,8 @@
 [![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/spring-boot-graalvm/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 [![versionspringboot](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27parent%27%5D%2F%2A%5Blocal-name%28%29%3D%27version%27%5D&label=springboot)](https://github.com/spring-projects/spring-boot)
-[![versionjava](https://img.shields.io/badge/graalvm_ce-20.0.0-orange.svg?logo=java)](https://github.com/graalvm/homebrew-tap)
+[![versionjava](https://img.shields.io/badge/graalvm_ce-20.0.0-orange.svg?logo=java)](https://sdkman.io/jdks#Oracle)
+[![Deployed on Heroku](https://img.shields.io/badge/heroku-deployed-blueviolet.svg?logo=heroku&)](https://spring-boot-graal.herokuapp.com/hello)
 
 
 This example project shows how to compile a Webflux based Spring Boot application into a Native App using GraalVM Native Image
@@ -997,6 +998,8 @@ Now simply access your App via http://localhost:8080/hello
 
 Finally we are where we wanted to be in the first place! We're able to run our natively compiled Spring Boot Apps inside Docker containers. It should be easy to deploy those to [a cloud provider like Heroku](https://heroku.com)!
 
+And it's good to get back on my last year's article on Running [Spring Boot on Heroku with Docker, JDK 11 & Maven 3.5.x](https://blog.codecentric.de/en/2019/08/spring-boot-heroku-docker-jdk11/), since there may be tweaks we need with our Graal-Setup also!
+
 Now as we move forward to a deployment of our Spring Boot Native app on a cloud provider's Docker infrastructure, we need to have our Spring Boot Native app's port configurable in a dynamic fashion! Most cloud providers want to dynamically set this port from the outside - as [we can see in Heroku for example](https://devcenter.heroku.com/articles/setting-the-http-port-for-java-applications).
 
 [As the Heroku docs state]( https://devcenter.heroku.com/articles/container-registry-and-runtime#dockerfile-commands-and-runtime):
@@ -1036,6 +1039,46 @@ docker run -e "PORT=8087" -p 8087:8087 spring-boot-graal
 ```
 
 Finally try to access your app at http://localhost:8087/hello
+
+
+### Use Docker to run our Spring Boot Native App on Heroku
+
+As already outlined in the section __'Configuring Heroku to use Docker'__ of my article on Running [Spring Boot on Heroku with Docker, JDK 11 & Maven 3.5.x](https://blog.codecentric.de/en/2019/08/spring-boot-heroku-docker-jdk11/), the key configuration file to use Docker with Heroku is [heroku.yml](heroku.yml):
+
+```yaml
+build:
+  docker:
+    web: Dockerfile
+```
+
+The `build.docker.web` configuration simply points to our [Dockerfile](Dockerfile).
+
+Same as within the article we omit the `run` section inside our `heroku.yml` [as defined in the Heroku docs](https://devcenter.heroku.com/articles/build-docker-images-heroku-yml#run-defining-the-processes-to-run) - without that section, the `CMD` defined inside our [Dockerfile](Dockerfile) is used instead.
+
+Why? Because with that configuration the startup behavior is always the same – be it on Heroku or on our local machine. Therefore I prefer to use the CMD keyword inside our Dockerfile!
+
+Now with the `heroku.yml` in place, we can fire up our Spring Boot Native App on Heroku. After commiting your `heroku.yml` into your repo via `git commit`, create your Heroku app if you haven't already:
+
+```
+heroku create spring-boot-graal
+```
+
+Then you simply set the Heroku stack:
+
+```
+heroku stack:set container --app spring-boot-graal
+```
+
+If not already done yet, be sure to connect your Heroku app with your GitHub repository in https://dashboard.heroku.com/apps/ like shown in this screenshot:
+
+![heroku-github-connect](screenshots/heroku-github-connect.png)
+
+Be also sure to have enabled the `automatic deploys from GitHub` feature and clicked the checkbox `Wait for CI to pass before deploy`.
+
+With all that setup, the next push to your GitHub repository will build and compile a Spring Boot App with GraalVM Native Image and deploy it on Heroku!
+
+After a successful deployment to Heroku simply access your App at https://spring-boot-graal.herokuapp.com/hello
+
 
 # Links
 
