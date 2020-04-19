@@ -38,5 +38,7 @@ jobs:
         # Login into Heroku Container Registry first, so that we can push our Image later
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
         # Compile with Docker
-        - docker build . --tag=spring-boot-graal
+        - docker build . --tag=registry.heroku.com/spring-boot-graal/web
+        - docker push registry.heroku.com/spring-boot-graal/web
+
       name: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"

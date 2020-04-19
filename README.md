@@ -1186,6 +1186,30 @@ Therefore we need to [configure some environment variables in Travis in order to
 
 ![travis-env-vars-heroku](screenshots/travis-env-vars-heroku.png)
 
+With the following configuration inside our [.travis.yml](.travis.yml], we should be able to successfully log in to Heroku Container Registry:
+
+```yaml
+    - script:
+        # Login into Heroku Container Registry first, so that we can push our Image later
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
+```
+
+Now after a successful Docker build, that compiles our Spring Boot App into a native executable, we finally need to push the resulting Docker image into Heroku Container Registry.
+
+Therefore we need to use the correct tag for our Docker image build([see the docs](https://devcenter.heroku.com/articles/container-registry-and-runtime#pushing-an-existing-image):
+
+```shell script
+docker build . --tag=registry.heroku.com/<app>/<process-type>
+docker push registry.heroku.com/<app>/<process-type>
+```
+
+This means we add the following `docker tag` and `docker push` command into our [.travis.yml](.travis.yml):
+
+```yaml
+    - docker build . --tag=registry.heroku.com/spring-boot-graal/web
+    - docker push registry.heroku.com/spring-boot-graal/web
+```
+
 
 Now head over to [http://localhost:8098/](http://localhost:8098/) and see the app live :)
 
