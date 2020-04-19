@@ -875,6 +875,118 @@ Then it is very likely that your Docker Engine has not enough RAM it is able to 
 As [stated in the comments of this so q&a](https://stackoverflow.com/questions/57935533/native-image-building-process-is-frozen-in-quarkus), you have to give Docker much more memory since the GraalVM Native Image compilation process is really RAM intensive. I had a working local compilation in the Docker Container when I gave Docker `12.00 GB` of RAM.
 
 
+### Run Spring Boot Native Apps in Docker
+
+Now that our Docker build works in general, we should also run our Native Spring Boot App inside a Docker container. Therefore a Docker multi-stage build would come in handy, since we could then do the build & Native Image compilation stuff in the first container - and then only take the resulting Native app and use it in the second container to run it.
+
+Therefore let's refactor our Dockerfile:
+
+```dockerfile
+# Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
+# https://hub.docker.com/r/oracle/graalvm-ce image
+FROM oracle/graalvm-ce:20.0.0-java11
+
+ADD . /build
+WORKDIR /build
+
+# For SDKMAN to work we need unzip & zip
+RUN yum install -y unzip zip
+
+RUN \
+    # Install SDKMAN
+    curl -s "https://get.sdkman.io" | bash; \
+    source "$HOME/.sdkman/bin/sdkman-init.sh"; \
+    sdk install maven; \
+    # Install GraalVM Native Image
+    gu install native-image;
+
+RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && mvn --version
+
+RUN native-image --version
+
+RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+
+
+# We use a Docker multi-stage build here in order that we only take the compiled native Spring Boot App from the first build container
+FROM oracle/graalvm-ce:20.0.0-java11
+
+MAINTAINER Jonas Hecht
+
+# Add Spring Boot Native app spring-boot-graal to Container
+COPY --from=0 "/build/target/native-image/spring-boot-graal" spring-boot-graal
+
+# Fire up our Spring Boot Native app by default
+CMD [ "sh", "-c", "./spring-boot-graal" ]
+```
+
+Let't run our Multi-stage build with the following command:
+
+
+```shell script
+docker build . --tag=spring-boot-graal
+```
+
+This again will take a while - you may grab a coffee :)
+
+After the Docker build successfully finished with some output like that:
+
+```
+[spring-boot-graal:289]   (typeflow): 114,554.33 ms,  6.58 GB
+[spring-boot-graal:289]    (objects):  63,145.07 ms,  6.58 GB
+[spring-boot-graal:289]   (features):   6,990.75 ms,  6.58 GB
+[spring-boot-graal:289]     analysis: 190,400.92 ms,  6.58 GB
+[spring-boot-graal:289]     (clinit):   1,970.98 ms,  6.67 GB
+[spring-boot-graal:289]     universe:   6,263.93 ms,  6.67 GB
+[spring-boot-graal:289]      (parse):  11,824.83 ms,  6.67 GB
+[spring-boot-graal:289]     (inline):   7,216.63 ms,  6.73 GB
+[spring-boot-graal:289]    (compile):  63,692.52 ms,  6.77 GB
+[spring-boot-graal:289]      compile:  86,836.76 ms,  6.77 GB
+[spring-boot-graal:289]        image:  10,050.63 ms,  6.77 GB
+[spring-boot-graal:289]        write:   1,319.52 ms,  6.77 GB
+[spring-boot-graal:289]      [total]: 313,644.65 ms,  6.77 GB
+
+real	5m16.447s
+user	16m32.096s
+sys	1m34.441s
+Removing intermediate container 151e1413ec2f
+ ---> be671d4f237f
+Step 10/13 : FROM oracle/graalvm-ce:20.0.0-java11
+ ---> 364d0bb387bd
+Step 11/13 : MAINTAINER Jonas Hecht
+ ---> Using cache
+ ---> 445833938b60
+Step 12/13 : COPY --from=0 "/build/target/native-image/spring-boot-graal" spring-boot-graal
+ ---> 2d717a0db703
+Step 13/13 : CMD [ "sh", "-c", "./spring-boot-graal" ]
+ ---> Running in 7fa931991d7e
+Removing intermediate container 7fa931991d7e
+ ---> a0afe30b3619
+Successfully built a0afe30b3619
+Successfully tagged spring-boot-graal:latest
+```
+
+We are able to run our Spring Boot Native app with `docker run -p 8080:8080 spring-boot-graal`: 
+
+```
+$ docker run -p 8080:8080 spring-boot-graal
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::
+
+2020-04-19 09:22:51.547  INFO 1 --- [           main] i.j.s.SpringBootHelloApplication         : Starting SpringBootHelloApplication on 06274db526b0 with PID 1 (/spring-boot-graal started by root in /)
+2020-04-19 09:22:51.547  INFO 1 --- [           main] i.j.s.SpringBootHelloApplication         : No active profile set, falling back to default profiles: default
+2020-04-19 09:22:51.591  WARN 1 --- [           main] io.netty.channel.DefaultChannelId        : Failed to find the current process ID from ''; using a random value: -949685832
+2020-04-19 09:22:51.593  INFO 1 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+2020-04-19 09:22:51.594  INFO 1 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 0.063 seconds (JVM running for 0.065)
+```
+
+Now simply access your App via http://localhost:8080/hello
+
 # Links
 
 https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support
