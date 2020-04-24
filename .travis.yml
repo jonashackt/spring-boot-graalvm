@@ -37,8 +37,24 @@ jobs:
     - script:
         # Login into Heroku Container Registry first, so that we can push our Image later
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
-        # Compile with Docker
+
+        # Compile App with Docker
         - docker build . --tag=registry.heroku.com/spring-boot-graal/web
+
+        # Push to Heroku Container Registry
         - docker push registry.heroku.com/spring-boot-graal/web
+
+        # Release Dockerized Native Spring Boot App on Heroku
+        - curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
+          -d '{
+                "updates": [
+                {
+                  "type": "web",
+                  "docker_image": "'"$(docker inspect registry.heroku.com/spring-boot-graal/web --format={{.Id}})"'"
+                }]
+              }' \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
+          -H "Authorization: Bearer $DOCKER_PASSWORD"
 
       name: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"

@@ -1044,21 +1044,7 @@ Finally try to access your app at http://localhost:8087/hello
 
 ### Use Docker to run our Spring Boot Native App on Heroku
 
-As already outlined in the section __'Configuring Heroku to use Docker'__ of my article on Running [Spring Boot on Heroku with Docker, JDK 11 & Maven 3.5.x](https://blog.codecentric.de/en/2019/08/spring-boot-heroku-docker-jdk11/), the key configuration file to use Docker with Heroku is [heroku.yml](heroku.yml):
-
-```yaml
-build:
-  docker:
-    web: Dockerfile
-```
-
-The `build.docker.web` configuration simply points to our [Dockerfile](Dockerfile).
-
-Same as within the article we omit the `run` section inside our `heroku.yml` [as defined in the Heroku docs](https://devcenter.heroku.com/articles/build-docker-images-heroku-yml#run-defining-the-processes-to-run) - without that section, the `CMD` defined inside our [Dockerfile](Dockerfile) is used instead.
-
-Why? Because with that configuration the startup behavior is always the same – be it on Heroku or on our local machine. Therefore I prefer to use the CMD keyword inside our Dockerfile!
-
-Now with the `heroku.yml` in place, we can fire up our Spring Boot Native App on Heroku. After commiting your `heroku.yml` into your repo via `git commit`, create your Heroku app if you haven't already:
+First things first: Let's start by creating your Heroku app if you haven't already:
 
 ```
 heroku create spring-boot-graal
@@ -1070,20 +1056,9 @@ Then you simply set the Heroku stack:
 heroku stack:set container --app spring-boot-graal
 ```
 
-If not already done yet, be sure to connect your Heroku app with your GitHub repository in https://dashboard.heroku.com/apps/ like shown in this screenshot:
-
-![heroku-github-connect](screenshots/heroku-github-connect.png)
-
-Be also sure to have enabled the `automatic deploys from GitHub` feature and clicked the checkbox `Wait for CI to pass before deploy`.
-
-With all that setup, the next push to your GitHub repository will build and compile a Spring Boot App with GraalVM Native Image and deploy it on Heroku!
-
-After a successful deployment to Heroku simply access your App at https://spring-boot-graal.herokuapp.com/hello
-
-
-### Tackling the 'Error: Image build request failed with exit status 137'
-
-My first attempts on Heroku lead to the following error:
+Sadly we can't use the section __'Configuring Heroku to use Docker'__ of my article on Running [Spring Boot on Heroku with Docker, JDK 11 & Maven 3.5.x](https://blog.codecentric.de/en/2019/08/spring-boot-heroku-docker-jdk11/) in this case here, since we would run into the `Error: Image build request failed with exit status 137`.
+                                                                                                                                                                                                                                                           
+My first attempts on Heroku lead to the build problems:
 
 ```
 Error: Image build request failed with exit status 137
@@ -1093,40 +1068,14 @@ sys	0m19.085s
 The command '/bin/sh -c source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication' returned a non-zero code: 137
 ```
 
-And was sure to get into this error in the firt place! A `Error: Image build request failed with exit status 137` happens usually [when Docker does not have enough memory](https://codefresh.io/docs/docs/troubleshooting/common-issues/error-code-137/). 
+This error appears usually [when Docker does not have enough memory](https://codefresh.io/docs/docs/troubleshooting/common-issues/error-code-137/). And since the free Heroku dyno only guarantees us `512MB` of RAM :( ([see Dyno Types](https://devcenter.heroku.com/articles/dyno-types))), we won't get far on this way.
 
-And I guess we wont come far here, since the free Heroku dyno only guarantees us `512MB` of RAM :( ([see Dyno Types](https://devcenter.heroku.com/articles/dyno-types)))
+But [as the docs state](https://devcenter.heroku.com/categories/deploying-with-docker) the way of [Building Docker Images with heroku.yml](https://devcenter.heroku.com/articles/build-docker-images-heroku-yml) isn't the only way to run Docker containers on Heroku. There's another way of using the [Container Registry & Runtime (Docker Deploys)](https://devcenter.heroku.com/articles/container-registry-and-runtime)!
 
-
-
-
-
-### Work around the Heroku 512MB RAM cap: Autorelease on Docker Hub
-
-Well I think we ended up trapped in a dead end! Heroku simply delivers not enough memory with their free Dynos to successfully run a GraalVM Native compilation on it.
-
-So maybe we should take another way: What about seperating the build process from the actual `docker run` later on Heroku?
-
-We could try to __autorelease to Docker Hub on hub.docker.com:__ 
-
-Therefore head over to the repositories tab in Docker Hub and click `Create Repository`:
-
-![docker-hub-create-repo](screenshots/docker-hub-create-repo.png)
-
-As the docs state, there are some config options to [setup automated builds](https://docs.docker.com/docker-hub/builds/).
-
-Finally, we should see our Docker images released on https://hub.docker.com/r/jonashackt/spring-boot-graalvm and could run this app simply by executing:
-
-```
-docker run -e "PORT=8087" -p 8087:8087 jonashackt/spring-boot-graalvm:latest
-```
-
-This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app locally.
-
-> But this way also has it's downsides: The process takes far to long and the automatic builds do not work as I expected them to: Do the Docker build asap after a push into our repo!
+With that we could decouple the Docker image build process (which is so much memory hungry!) from simply running the Docker container based on that image.
 
 
-### Work around the Heroku 512MB RAM cap: Building & Releasing our Dockerimage with TravisCI
+### Work around the Heroku 512MB RAM cap: Building our Dockerimage with TravisCI
 
 So we need to do the Docker build on another platform - why not simply use Travis?! It already proofed to work directly on the host, why not also [using the Travis Docker service](https://docs.travis-ci.com/user/docker/)?!
 
@@ -1179,37 +1128,6 @@ jobs:
         - docker build . --tag=spring-boot-graal
       name: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"
 ```
-
-Now we should be able to finally [push the build Docker image into Heroku's Container Registry](https://devcenter.heroku.com/articles/container-registry-and-runtime#using-a-ci-cd-platform), from where we're able to run our Spring Boot Native app later on.
-
-Therefore we need to [configure some environment variables in Travis in order to push](https://docs.travis-ci.com/user/docker/#pushing-a-docker-image-to-a-registry) to Heroku's Container Registry inside our TravisCI job's settings: `DOCKER_USERNAME` and `DOCKER_PASSWORD`. The first is your Heroku eMail, the latter is your Heroku API key. Be sure to prevent displaying the values in the build log:
-
-![travis-env-vars-heroku](screenshots/travis-env-vars-heroku.png)
-
-With the following configuration inside our [.travis.yml](.travis.yml], we should be able to successfully log in to Heroku Container Registry:
-
-```yaml
-    - script:
-        # Login into Heroku Container Registry first, so that we can push our Image later
-        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
-```
-
-Now after a successful Docker build, that compiles our Spring Boot App into a native executable, we finally need to push the resulting Docker image into Heroku Container Registry.
-
-Therefore we need to use the correct tag for our Docker image build([see the docs](https://devcenter.heroku.com/articles/container-registry-and-runtime#pushing-an-existing-image):
-
-```shell script
-docker build . --tag=registry.heroku.com/<app>/<process-type>
-docker push registry.heroku.com/<app>/<process-type>
-```
-
-This means we add the following `docker tag` and `docker push` command into our [.travis.yml](.travis.yml):
-
-```yaml
-    - docker build . --tag=registry.heroku.com/spring-boot-graal/web
-    - docker push registry.heroku.com/spring-boot-graal/web
-```
-
 
 ### Tackling 'Error: Image build request failed with exit status 137' with the -J-Xmx parameter
 
@@ -1265,10 +1183,143 @@ sys	2m3.179s
 The one thing to take into account is that Native Image compilation will be a bit slower now. So if you run on your local machine with lot's of memory, feel free to delete the ` -J-Xmx4G` parameter :)
 
 
+### Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure
+
+Now we should be able to finally [push the build Docker image into Heroku's Container Registry](https://devcenter.heroku.com/articles/container-registry-and-runtime#using-a-ci-cd-platform), from where we're able to run our Spring Boot Native app later on.
+
+Therefore we need to [configure some environment variables in Travis in order to push](https://docs.travis-ci.com/user/docker/#pushing-a-docker-image-to-a-registry) to Heroku's Container Registry inside our TravisCI job's settings: `DOCKER_USERNAME` and `DOCKER_PASSWORD`. The first is your Heroku eMail, the latter is your Heroku API key. Be sure to prevent displaying the values in the build log:
+
+![travis-env-vars-heroku](screenshots/travis-env-vars-heroku.png)
+
+With the following configuration inside our [.travis.yml](.travis.yml], we should be able to successfully log in to Heroku Container Registry:
+
+```yaml
+    - script:
+        # Login into Heroku Container Registry first, so that we can push our Image later
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
+```
+
+Now after a successful Docker build, that compiles our Spring Boot App into a native executable, we finally need to push the resulting Docker image into Heroku Container Registry.
+
+Therefore we need to use the correct tag for our Docker image build([see the docs](https://devcenter.heroku.com/articles/container-registry-and-runtime#pushing-an-existing-image):
+
+```shell script
+docker build . --tag=registry.heroku.com/<app>/<process-type>
+docker push registry.heroku.com/<app>/<process-type>
+```
+
+This means we add the following `docker tag` and `docker push` command into our [.travis.yml](.travis.yml):
+
+```yaml
+    - docker build . --tag=registry.heroku.com/spring-boot-graal/web
+    - docker push registry.heroku.com/spring-boot-graal/web
+```
+
+
+The final step after a successful push is [to release our App on Heroku](https://devcenter.heroku.com/articles/container-registry-and-runtime#releasing-an-image), which is always the last step to deploy our App on Heroku using Docker [since May 2018](https://devcenter.heroku.com/changelog-items/1426) (before a push was all you had to do).
+
+There are [two ways to achieve this](https://devcenter.heroku.com/articles/container-registry-and-runtime#releasing-an-image): either through the CLI or with the API. The first would require us to install Heroku CLI in Travis, the latter should work out-of-the-box. Therefore let's craft the needed `curl` command:
+
+```shell script
+curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
+          -d '{
+                "updates": [
+                {
+                  "type": "web",
+                  "docker_image": "'"$(docker inspect registry.heroku.com/spring-boot-graal/web --format={{.Id}})"'"
+                }]
+              }' \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
+          -H "Authorization: Bearer $DOCKER_PASSWORD"
+```
+
+This `curl` command is even better then the documented on in [the official Heroku docs](https://devcenter.heroku.com/articles/container-registry-and-runtime#api), since it already incorporates the `docker inspect registry.heroku.com/spring-boot-graal/web --format={{.Id}})` command to retrieve the needed Docker image id and also omits the need to login to Heroku CLI beforehand (to create the needed `~/.netrc` mentioned in the docs), since we simply use `-H "Authorization: Bearer $DOCKER_PASSWORD"` here, where `$DOCKER_PASSWORD` is our Heroku API Key again.
+
+Also see [this so answer for more details](https://stackoverflow.com/a/61407690/4964553). This leads to our fully working [.travis.yml](.travis.yml):
+
+```yaml
+dist: bionic
+language: minimal
+
+services:
+  - docker
+
+- script:
+    # Login into Heroku Container Registry first, so that we can push our Image later
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
+
+    # Compile App with Docker
+    - docker build . --tag=registry.heroku.com/spring-boot-graal/web
+
+    # Push to Heroku Container Registry
+    - docker push registry.heroku.com/spring-boot-graal/web
+
+    # Release Dockerized Native Spring Boot App on Heroku
+    - curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
+      -d '{
+            "updates": [
+            {
+              "type": "web",
+              "docker_image": "'"$(docker inspect registry.heroku.com/spring-boot-graal/web --format={{.Id}})"'"
+            }]
+          }' \
+      -H "Content-Type: application/json" \
+      -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
+      -H "Authorization: Bearer $DOCKER_PASSWORD"
+```
+
+That's it! After a successfull TravisCI build, we should be able to see our running Dockerized Spring Boot Native App on Heroku at https://spring-boot-graal.herokuapp.com/hello
+
+![heroku-running-app](screenshots/heroku-running-app.png)
+
+You can even use `heroku logs` to see what's happening behind the scenes:
+
+```
+$ heroku logs -a spring-boot-graal
+
+2020-04-24T12:02:14.562471+00:00 heroku[web.1]: State changed from down to starting
+2020-04-24T12:02:41.564599+00:00 heroku[web.1]: State changed from starting to up
+2020-04-24T12:02:41.283549+00:00 app[web.1]:
+2020-04-24T12:02:41.283574+00:00 app[web.1]: .   ____          _            __ _ _
+2020-04-24T12:02:41.283575+00:00 app[web.1]: /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+2020-04-24T12:02:41.283575+00:00 app[web.1]: ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+2020-04-24T12:02:41.283576+00:00 app[web.1]: \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+2020-04-24T12:02:41.283576+00:00 app[web.1]: '  |____| .__|_| |_|_| |_\__, | / / / /
+2020-04-24T12:02:41.283578+00:00 app[web.1]: =========|_|==============|___/=/_/_/_/
+2020-04-24T12:02:41.286498+00:00 app[web.1]: :: Spring Boot ::
+2020-04-24T12:02:41.286499+00:00 app[web.1]:
+2020-04-24T12:02:41.287774+00:00 app[web.1]: 2020-04-24 12:02:41.287  INFO 3 --- [           main] i.j.s.SpringBootHelloApplication         : Starting SpringBootHelloApplication on 1c7f1944-1f01-4284-8931-bc1a0a2d1fa5 with PID 3 (/spring-boot-graal started by u11658 in /)
+2020-04-24T12:02:41.287859+00:00 app[web.1]: 2020-04-24 12:02:41.287  INFO 3 --- [           main] i.j.s.SpringBootHelloApplication         : No active profile set, falling back to default profiles: default
+2020-04-24T12:02:41.425964+00:00 app[web.1]: 2020-04-24 12:02:41.425  WARN 3 --- [           main] io.netty.channel.DefaultChannelId        : Failed to find the current process ID from ''; using a random value: -36892848
+2020-04-24T12:02:41.427326+00:00 app[web.1]: 2020-04-24 12:02:41.427  INFO 3 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 59884
+2020-04-24T12:02:41.430874+00:00 app[web.1]: 2020-04-24 12:02:41.430  INFO 3 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 0.156 seconds (JVM running for 0.159)
+```
 
 
 
-Now head over to [http://localhost:8098/](http://localhost:8098/) and see the app live :)
+### TODO: Autorelease on Docker Hub
+
+We could try to __autorelease to Docker Hub on hub.docker.com:__ 
+
+Therefore head over to the repositories tab in Docker Hub and click `Create Repository`:
+
+![docker-hub-create-repo](screenshots/docker-hub-create-repo.png)
+
+As the docs state, there are some config options to [setup automated builds](https://docs.docker.com/docker-hub/builds/).
+
+Finally, we should see our Docker images released on https://hub.docker.com/r/jonashackt/spring-boot-graalvm and could run this app simply by executing:
+
+```
+docker run -e "PORT=8087" -p 8087:8087 jonashackt/spring-boot-graalvm:latest
+```
+
+This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app locally.
+
+> But this way also has it's downsides: The process takes far to long and the automatic builds do not work as I expected them to: Do the Docker build asap after a push into our repo!
+
+
+
 
 # Links
 
