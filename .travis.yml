@@ -45,7 +45,8 @@ jobs:
         - docker push registry.heroku.com/spring-boot-graal/web
 
         # Release Dockerized Native Spring Boot App on Heroku
-        - curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
+        - >
+          curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
           -d '{
                 "updates": [
                 {
