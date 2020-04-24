@@ -8,54 +8,54 @@ services:
 
 jobs:
   include:
-    - script:
-        # Install GraalVM with SDKMAN
-        - curl -s "https://get.sdkman.io" | bash
-        - source "$HOME/.sdkman/bin/sdkman-init.sh"
-        - sdk install java 20.0.0.r11-grl
-
-        # Check if GraalVM was installed successfully
-        - java -version
-
-        # Install Maven, that uses GraalVM for later builds
-        - sdk install maven
-
-        # Show Maven using GraalVM JDK
-        - mvn --version
-
-        # Install GraalVM Native Image
-        - gu install native-image
-
-        # Check if Native Image was installed properly
-        - native-image --version
-
-        # Run GraalVM Native Image compilation of Spring Boot App
-        - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
-
-      name: "Native Image compile on Travis Host"
+#    - script:
+#        # Install GraalVM with SDKMAN
+#        - curl -s "https://get.sdkman.io" | bash
+#        - source "$HOME/.sdkman/bin/sdkman-init.sh"
+#        - sdk install java 20.0.0.r11-grl
+#
+#        # Check if GraalVM was installed successfully
+#        - java -version
+#
+#        # Install Maven, that uses GraalVM for later builds
+#        - sdk install maven
+#
+#        # Show Maven using GraalVM JDK
+#        - mvn --version
+#
+#        # Install GraalVM Native Image
+#        - gu install native-image
+#
+#        # Check if Native Image was installed properly
+#        - native-image --version
+#
+#        # Run GraalVM Native Image compilation of Spring Boot App
+#        - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+#
+#      name: "Native Image compile on Travis Host"
 
     - script:
         # Login into Heroku Container Registry first, so that we can push our Image later
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
 
-        # Compile App with Docker
-        - docker build . --tag=registry.heroku.com/spring-boot-graal/web
-
-        # Push to Heroku Container Registry
-        - docker push registry.heroku.com/spring-boot-graal/web
+#        # Compile App with Docker
+#        - docker build . --tag=registry.heroku.com/spring-boot-graal/web
+#
+#        # Push to Heroku Container Registry
+#        - docker push registry.heroku.com/spring-boot-graal/web
 
         # Release Dockerized Native Spring Boot App on Heroku
         - >
           curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
           -d '{
-                "updates": [
+                \"updates\": [
                 {
-                  "type": "web",
-                  "docker_image": "'"$(docker inspect registry.heroku.com/spring-boot-graal/web --format={{.Id}})"'"
+                  \"type\": \"web\",
+                  \"docker_image\": \"'\"$(docker inspect registry.heroku.com/spring-boot-graal/web --format={{.Id}})\"'\"
                 }]
               }' \
-          -H "Content-Type: application/json" \
-          -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
-          -H "Authorization: Bearer $DOCKER_PASSWORD"
+          -H \"Content-Type: application/json\" \
+          -H \"Accept: application/vnd.heroku+json; version=3.docker-releases\" \
+          -H \"Authorization: Bearer $DOCKER_PASSWORD\"
 
       name: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"

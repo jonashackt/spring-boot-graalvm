@@ -1218,7 +1218,7 @@ This means we add the following `docker tag` and `docker push` command into our 
 
 The final step after a successful push is [to release our App on Heroku](https://devcenter.heroku.com/articles/container-registry-and-runtime#releasing-an-image), which is always the last step to deploy our App on Heroku using Docker [since May 2018](https://devcenter.heroku.com/changelog-items/1426) (before a push was all you had to do).
 
-There are [two ways to achieve this](https://devcenter.heroku.com/articles/container-registry-and-runtime#releasing-an-image): either through the CLI or with the API. The first would require us to install Heroku CLI in Travis, the latter should work out-of-the-box. Therefore let's craft the needed `curl` command:
+There are [two ways to achieve this](https://devcenter.heroku.com/articles/container-registry-and-runtime#releasing-an-image): either through the CLI via `heroku container:release web` or with the API. The first would require us to install Heroku CLI in Travis, the latter should work out-of-the-box. Therefore let's craft the needed `curl` command:
 
 ```shell script
 curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
@@ -1256,7 +1256,8 @@ services:
     - docker push registry.heroku.com/spring-boot-graal/web
 
     # Release Dockerized Native Spring Boot App on Heroku
-    - curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
+    - >
+      curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
       -d '{
             "updates": [
             {
@@ -1268,6 +1269,8 @@ services:
       -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
       -H "Authorization: Bearer $DOCKER_PASSWORD"
 ```
+
+Mind the way of using multiline commands like this `curl` with TravisCI needs a preceeding `- >` ([see this for more information](https://travis-ci.community/t/yaml-multiline-strings/3914/4)).
 
 That's it! After a successfull TravisCI build, we should be able to see our running Dockerized Spring Boot Native App on Heroku at https://spring-boot-graal.herokuapp.com/hello
 
