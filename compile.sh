@@ -46,7 +46,7 @@ CP=BOOT-INF/classes:$LIBPATH:$FEATURE
 GRAALVM_VERSION=`native-image --version`
 echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
 time native-image \
-  --no-server \
+  --no-server -J-Xmx4G \
   --no-fallback \
   --initialize-at-build-time \
   -H:+TraceClassInitialization \
