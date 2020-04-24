@@ -16,6 +16,7 @@
 
 	<properties>
 		<java.version>8</java.version>
+		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
 	</properties>
 
 	<dependencies>

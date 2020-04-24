@@ -20,7 +20,7 @@ RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && mvn --version
 
 RUN native-image --version
 
-RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh
 
 
 # We use a Docker multi-stage build here in order that we only take the compiled native Spring Boot App from the first build container

@@ -332,6 +332,23 @@ So there we go! Now we don't need to manually download and compile the @Automati
 
 Be sure to also have the separate `Spring Milestones` repository definition in place, since the library isn't available on Maven Central right now!
 
+
+### Set start-class element in pom.xml
+
+For successfully being able to execute the `native-image` compilation process, we need to provide the command with the full name of our Spring Boot main class. 
+
+At first I provided a parameter for my `compile.sh` script we have a look into later on. But as the [native-image-maven-plugin](https://mvnrepository.com/artifact/com.oracle.substratevm/native-image-maven-plugin) also relies on this setting, I found it rather okay to provide this class' name inside the [pom.xml](pom.xml):
+
+```
+	<properties>
+		...
+		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
+	</properties>
+```
+
+Since after setting this class once in our `pom.xml`, we don't need to bother with this parameter again - since we could read it from our pom in the later steps automatically.
+
+
 ### Craft a compile.sh script
 
 I'am pretty sure, that this step described here will not be necessary when Spring will officially release the Graal full support. But right now, we do need to do a little grunt work here.
@@ -340,14 +357,6 @@ There are great examples of working compile scripts inside the [spring-graal-nat
 
 ```shell script
 #!/usr/bin/env bash
-
-if [ -z "$1" ];
-  then
-    echo "[--> ERROR] Please provide your Spring Boot Main class as script parameter like this: ./compile.sh your.package.YourSpringBootApplicationClass"
-    exit
-fi
-echo "[-->] Using Mainclass '$1' provided as parameter"
-MAINCLASS=$1
 
 echo "[-->] Detect artifactId from pom.xml"
 ARTIFACT=$(mvn -q \
@@ -364,11 +373,17 @@ VERSION=$(mvn -q \
   --non-recursive \
   exec:exec);
 echo "artifact version is $VERSION"
+
+echo "[-->] Detect Spring Boot Main class ('start-class') from pom.xml"
+MAINCLASS=$(mvn -q \
+-Dexec.executable=echo \
+-Dexec.args='${start-class}' \
+--non-recursive \
+exec:exec);
+echo "Spring Boot Main class ('start-class') is 'MAINCLASS'"
 ```
 
-The first part of the script is dedicated to define needed variables for later GraalVM Native Image compilation. The variables `ARTIFACT` and `VERSION` could be simply derived from our [pom.xml](pom.xml) with [the help of the Maven exec plugin](https://stackoverflow.com/a/26514030/4964553).
-
-It would be also cool, if we were able to retrieve the needed Spring Boot Main class name automatically, but I sadly didn't find a way. Therefore, I defined a parameter to run this [compile.sh](compile.sh) script properly - simply insert your Spring Boot Main class `./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication`
+The first part of the script is dedicated to define needed variables for later GraalVM Native Image compilation. The variables `ARTIFACT`, `VERSION` and `MAINCLASS` could be simply derived from our [pom.xml](pom.xml) with [the help of the Maven exec plugin](https://stackoverflow.com/a/26514030/4964553).
 
 In the next section of the [compile.sh](compile.sh) script, we clean (aka remove) the `target` directory and build our Spring Boot App via a well known `mvn package`:
 
@@ -427,7 +442,7 @@ I altered this section compared to the example scripts also, since I wanted to s
 We can now run the compile script with: 
 
 ```shell script
-./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+./compile.sh
 ```
 
 The compile step does take it's time (depending on your hardware!). On my MacBook Pro 2017 this takes around 3 to 4 minutes. I prepared a small asciinema record so that you can have a look at how the compilation process works:
@@ -517,7 +532,7 @@ install:
 
 script:
   # Run GraalVM Native Image compilation of Spring Boot App
-  - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+  - ./compile.sh
 ```
 
 There are two main things to notice here: First we simply leverage the power of SDKMAN again to install GraalVM, as we already did on our local machines.
@@ -853,7 +868,7 @@ docker run -it --rm \
     --volume $(pwd):/build \
     --workdir /build \
     --volume "$HOME"/.m2:/root/.m2 \
-    graalvm-ce:20.0.0-java11-mvn-native-image ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+    graalvm-ce:20.0.0-java11-mvn-native-image ./compile.sh
 ```
 
 When I first thought about a Docker usage, I wanted to pack this build into a `Dockerfile` also - but then I realized, that there's [no easy way of using Docker volumes at Docker build time](https://stackoverflow.com/questions/51086724/docker-build-using-volumes-at-build-time). But I really wanted to mount a Docker volume to my local Maven repository like `--volume "$HOME"/.m2:/root/.m2` to prevent the download of all the Spring Maven dependencies over and over again every time we start our Docker container.
@@ -911,7 +926,7 @@ RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && mvn --version
 
 RUN native-image --version
 
-RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh
 
 
 # We use a Docker multi-stage build here in order that we only take the compiled native Spring Boot App from the first build container
@@ -1065,7 +1080,7 @@ Error: Image build request failed with exit status 137
 real	2m51.946s
 user	2m9.594s
 sys	0m19.085s
-The command '/bin/sh -c source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication' returned a non-zero code: 137
+The command '/bin/sh -c source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh' returned a non-zero code: 137
 ```
 
 This error appears usually [when Docker does not have enough memory](https://codefresh.io/docs/docs/troubleshooting/common-issues/error-code-137/). And since the free Heroku dyno only guarantees us `512MB` of RAM :( ([see Dyno Types](https://devcenter.heroku.com/articles/dyno-types))), we won't get far on this way.
@@ -1119,7 +1134,7 @@ jobs:
         - native-image --version
 
         # Run GraalVM Native Image compilation of Spring Boot App
-        - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+        - ./compile.sh
 
       name: "Native Image compile on Travis Host"
 
@@ -1143,7 +1158,7 @@ Luckily there's [a hint in this GitHub issue](https://github.com/oracle/graal/is
 
 Using that option together like this in our `native-image` command:
 
-```
+```shell script
 time native-image \
   --no-server -J-Xmx4G \
   --no-fallback \

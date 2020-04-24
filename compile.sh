@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
 
-if [ -z "$1" ];
-  then
-    echo "[--> ERROR] Please provide your Spring Boot Main class as script parameter like this: ./compile.sh your.package.YourSpringBootApplicationClass"
-    exit
-fi
-echo "[-->] Using Mainclass '$1' provided as parameter"
-MAINCLASS=$1
-
 echo "[-->] Detect artifactId from pom.xml"
 ARTIFACT=$(mvn -q \
 -Dexec.executable=echo \
@@ -22,7 +14,15 @@ VERSION=$(mvn -q \
   -Dexec.args='${project.version}' \
   --non-recursive \
   exec:exec);
-echo "artifact version is $VERSION"
+echo "artifact version is '$VERSION'"
+
+echo "[-->] Detect Spring Boot Main class ('start-class') from pom.xml"
+MAINCLASS=$(mvn -q \
+-Dexec.executable=echo \
+-Dexec.args='${start-class}' \
+--non-recursive \
+exec:exec);
+echo "Spring Boot Main class ('start-class') is '$MAINCLASS'"
 
 echo "[-->] Cleaning target directory & creating new one"
 rm -rf target

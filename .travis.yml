@@ -30,7 +30,7 @@ jobs:
         - native-image --version
 
         # Run GraalVM Native Image compilation of Spring Boot App
-        - ./compile.sh io.jonashackt.springbootgraal.SpringBootHelloApplication
+        - ./compile.sh
 
       name: "Native Image compile on Travis Host"
 
