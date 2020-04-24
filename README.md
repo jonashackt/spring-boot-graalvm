@@ -1211,6 +1211,63 @@ This means we add the following `docker tag` and `docker push` command into our 
 ```
 
 
+### Tackling 'Error: Image build request failed with exit status 137' with the -J-Xmx parameter
+
+[As mentioned in the Spring docs](https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html#_options_recommended_by_default), we should use the `--no-server` option when running Native Image compilations with Spring for now.
+
+But why is this parameter used? See the official docs: https://www.graalvm.org/docs/reference-manual/native-image/
+
+> Another prerequisite to consider is the maximum heap size. Physical memory for running a JVM-based application may be insufficient to build a native image. For server-based image building we allow to use 80% of the reported physical RAM for all servers together, but never more than 14GB per server (for exact details please consult the native-image source code). If you run with --no-server option, you will get the whole 80% of what is reported as physical RAM as the baseline. This mode respects -Xmx arguments additionally.
+
+We could leave out the `no-server` option in order to reduce the amount of memory our Native Image compilation consumes - but there's an open issue in combination with Spring: https://github.com/oracle/graal/issues/1952 which says, that the images build without `--no-server` is sometimes unreliable.
+
+Luckily there's [a hint in this GitHub issue](https://github.com/oracle/graal/issues/920), that we could configure the amount of memory the `--no-server` option takes in total with the help of a `Xmx` parameter like `-J-Xmx3G`.
+
+Using that option together like this in our `native-image` command:
+
+```
+time native-image \
+  --no-server -J-Xmx4G \
+  --no-fallback \
+  --initialize-at-build-time \
+  -H:+TraceClassInitialization \
+  -H:Name=$ARTIFACT \
+  -H:+ReportExceptionStackTraces \
+  -Dspring.graal.remove-unused-autoconfig=true \
+  -Dspring.graal.remove-yaml-support=true \
+  -cp $CP $MAINCLASS;
+```
+
+we could repeatably reduce the amount of memory to 4GBs of RAM, which should be enough for TravisCI - since it provides us with more than 6GB using the Docker service ([see this build for example](https://travis-ci.org/github/jonashackt/spring-boot-graalvm/builds/677157831)). Using the option results in the following output:
+
+```
+08:07:23.999 [ForkJoinPool-2-worker-3] DEBUG io.netty.util.internal.PlatformDependent - maxDirectMemory: 4294967296 bytes (maybe)
+...
+[spring-boot-graal:215]   (typeflow): 158,492.53 ms,  4.00 GB
+[spring-boot-graal:215]    (objects):  94,986.72 ms,  4.00 GB
+[spring-boot-graal:215]   (features): 104,518.36 ms,  4.00 GB
+[spring-boot-graal:215]     analysis: 368,005.35 ms,  4.00 GB
+[spring-boot-graal:215]     (clinit):   3,107.18 ms,  4.00 GB
+[spring-boot-graal:215]     universe:  12,502.04 ms,  4.00 GB
+[spring-boot-graal:215]      (parse):  22,617.13 ms,  4.00 GB
+[spring-boot-graal:215]     (inline):  10,093.57 ms,  3.49 GB
+[spring-boot-graal:215]    (compile):  82,256.99 ms,  3.59 GB
+[spring-boot-graal:215]      compile: 119,502.78 ms,  3.59 GB
+[spring-boot-graal:215]        image:  12,087.80 ms,  3.59 GB
+[spring-boot-graal:215]        write:   3,573.06 ms,  3.59 GB
+[spring-boot-graal:215]      [total]: 558,194.13 ms,  3.59 GB
+
+real	9m22.984s
+user	24m41.948s
+sys	2m3.179s
+```
+
+The one thing to take into account is that Native Image compilation will be a bit slower now. So if you run on your local machine with lot's of memory, feel free to delete the ` -J-Xmx4G` parameter :)
+
+
+
+
+
 Now head over to [http://localhost:8098/](http://localhost:8098/) and see the app live :)
 
 # Links
@@ -1229,6 +1286,8 @@ https://hub.docker.com/r/springci/graalvm-ce-java8
 
 https://hub.docker.com/r/oracle/graalvm-ce/
 
+https://www.graalvm.org/docs/reference-manual/native-image/
+
 https://stackoverflow.com/questions/58465833/graalvm-with-native-image-compilation-in-travis-ci
 
 https://spring.io/blog/2020/04/09/spring-graal-native-0-6-0-released
@@ -1244,3 +1303,7 @@ https://medium.com/graalvm/updates-on-class-initialization-in-graalvm-native-ima
 https://e.printstacktrace.blog/building-java-and-maven-docker-images-using-parallelized-jenkins-pipeline-and-sdkman/
 
 https://stackoverflow.com/questions/61302412/how-to-configure-the-port-of-a-spring-boot-app-thats-natively-compiled-by-graal
+
+https://medium.com/analytics-vidhya/maybe-native-executable-in-quarkus-is-not-for-you-but-it-is-awesome-967588e80a4
+
+https://quarkus.io/guides/building-native-image
