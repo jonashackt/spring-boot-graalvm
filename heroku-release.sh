@@ -2,7 +2,7 @@
 
 if [ -z "$1" ];
   then
-    echo "[--> ERROR] Please provide your Heroku app name as script parameter like this: ./heroku-release spring-boot-graal"
+    echo "[--> ERROR] Please provide your Heroku app name as script parameter like this: ./heroku-release.sh spring-boot-graal"
     exit
 fi
 echo "[-->] Releasing Dockerized Heroku app '$1'"

@@ -45,6 +45,6 @@ jobs:
 #        - docker push registry.heroku.com/spring-boot-graal/web
 
         # Release Dockerized Native Spring Boot App on Heroku
-        - ./heroku-release spring-boot-graal
+        - ./heroku-release.sh spring-boot-graal
 
       name: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"
