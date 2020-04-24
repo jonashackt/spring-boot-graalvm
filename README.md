@@ -1236,7 +1236,30 @@ curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
 
 This `curl` command is even better then the documented on in [the official Heroku docs](https://devcenter.heroku.com/articles/container-registry-and-runtime#api), since it already incorporates the `docker inspect registry.heroku.com/spring-boot-graal/web --format={{.Id}})` command to retrieve the needed Docker image id and also omits the need to login to Heroku CLI beforehand (to create the needed `~/.netrc` mentioned in the docs), since we simply use `-H "Authorization: Bearer $DOCKER_PASSWORD"` here, where `$DOCKER_PASSWORD` is our Heroku API Key again.
 
-Also see [this so answer for more details](https://stackoverflow.com/a/61407690/4964553). This leads to our fully working [.travis.yml](.travis.yml):
+The problem with Travis: [It does not understand our nice curl](https://travis-ci.org/github/jonashackt/spring-boot-graalvm/jobs/679008339) command, [since it interprets it totally wrong](https://stackoverflow.com/questions/34687610/how-to-properly-use-curl-in-travis-ci-config-file-yaml), even if we mind [the correct multiline usage](https://travis-ci.community/t/yaml-multiline-strings/3914/4). Well I guess our Java User Group Thüringen speaker Kai Tödter did already know that restriction of some CI systems, and [crafted himself a bash script](https://toedter.com/2018/06/02/heroku-docker-deployment-update/) for exactly that purpose.
+
+At that point I created a script called [heroku-release.sh](heroku-release.sh):
+
+```shell script
+#!/usr/bin/env bash
+
+herokuAppName=$1
+dockerImageId=$(docker inspect registry.heroku.com/$herokuAppName/web --format={{.Id}})
+
+curl -X PATCH https://api.heroku.com/apps/$herokuAppName/formation \
+          -d '{
+                "updates": [
+                {
+                  "type": "web",
+                  "docker_image": "'"$dockerImageId"'"
+                }]
+              }' \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
+          -H "Authorization: Bearer $DOCKER_PASSWORD"
+```
+
+Using this script, we finally have our fully working [.travis.yml](.travis.yml):
 
 ```yaml
 dist: bionic
@@ -1256,21 +1279,8 @@ services:
     - docker push registry.heroku.com/spring-boot-graal/web
 
     # Release Dockerized Native Spring Boot App on Heroku
-    - >
-      curl -X PATCH https://api.heroku.com/apps/spring-boot-graal/formation \
-      -d '{
-            "updates": [
-            {
-              "type": "web",
-              "docker_image": "'"$(docker inspect registry.heroku.com/spring-boot-graal/web --format={{.Id}})"'"
-            }]
-          }' \
-      -H "Content-Type: application/json" \
-      -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
-      -H "Authorization: Bearer $DOCKER_PASSWORD"
+    - ./heroku-release.sh spring-boot-graal
 ```
-
-Mind the way of using multiline commands like this `curl` with TravisCI needs a preceeding `- >` ([see this for more information](https://travis-ci.community/t/yaml-multiline-strings/3914/4)).
 
 That's it! After a successfull TravisCI build, we should be able to see our running Dockerized Spring Boot Native App on Heroku at https://spring-boot-graal.herokuapp.com/hello
 
