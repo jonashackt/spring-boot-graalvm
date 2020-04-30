@@ -14,6 +14,38 @@ This example project shows how to compile a Webflux based Spring Boot applicatio
 
 [![asciicast](https://asciinema.org/a/313688.svg)](https://asciinema.org/a/313688)
 
+
+## Table of Contents 
+
+* [New to GraalVM with Spring Boot?](#new-to-graalvm-with-spring-boot)
+  * [Graal Native Image & SpringBoot](#graal-native-image--springboot)
+  * [Dynamic Graal Native Image configuration with @AutomaticFeature](#dynamic-graal-native-image-configuration-with-automaticfeature)
+* [Install GraalVM with SDKMAN](#install-graalvm-with-sdkman)
+  * [Install GraalVM Native Image](#install-graalvm-native-image)
+* [Create a simple WebFlux Reactive REST Spring Boot app](#create-a-simple-webflux-reactive-rest-spring-boot-app)
+* [Make Spring Boot app Graal Native Image friendly](#make-spring-boot-app-graal-native-image-friendly)
+  * [Relocate Annotation classpath scanning from runtime to build time](#relocate-annotation-classpath-scanning-from-runtime-to-build-time)
+  * [Disable usage of GCLIB proxies](#disable-usage-of-gclib-proxies)
+  * [Detect Autoconfiguration](#detect-autoconfiguration)
+  * [Get Spring Graal @AutomaticFeature](#get-spring-graal-automaticfeature)
+  * [Set start-class element in pom.xml](#set-start-class-element-in-pomxml)
+  * [Craft a compile.sh script](#craft-a-compilesh-script)
+  * [Run the compile.sh script & start your native Spring Boot App](#run-the-compilesh-script--start-your-native-spring-boot-app)
+* [Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI](#build-and-run-your-native-image-compilation-on-a-cloud-ci-provider-like-travisci)
+  * [Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error](#prevent-the-javalangunsatisfiedlinkerror-no-netty_transport_native_epoll_x86_64-in-javalibrarypath-usrjavapackageslib-usrlib64-lib64-lib-usrlib-error)
+  * [Tackling the 'There was an error linking the native image /usr/bin/ld: final link failed: Memory exhausted' error](#tackling-the-there-was-an-error-linking-the-native-image-usrbinld-final-link-failed-memory-exhausted-error)
+* [Use Docker to compile a Spring Boot App with GraalVM](#use-docker-to-compile-a-spring-boot-app-with-graalvm)
+  * [Tackling 'Exception java.lang.OutOfMemoryError in thread "native-image pid watcher"' error](#tackling-exception-javalangoutofmemoryerror-in-thread-native-image-pid-watcher-error)
+  * [Run Spring Boot Native Apps in Docker](#run-spring-boot-native-apps-in-docker)
+* [Running Spring Boot Graal Native Apps on Heroku](#running-spring-boot-graal-native-apps-on-heroku)
+  * [Configure the Spring Boot Native app's port dynamically inside a Docker container](#configure-the-spring-boot-native-apps-port-dynamically-inside-a-docker-container)
+  * [Use Docker to run our Spring Boot Native App on Heroku](#use-docker-to-run-our-spring-boot-native-app-on-heroku)
+  * [Work around the Heroku 512MB RAM cap: Building our Dockerimage with TravisCI](#work-around-the-heroku-512mb-ram-cap-building-our-dockerimage-with-travisci)
+  * [Tackling 'Error: Image build request failed with exit status 137' with the -J-Xmx parameter](#tackling-error-image-build-request-failed-with-exit-status-137-with-the--j-xmx-parameter)
+  * [Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure](#pushing-and-releasing-our-dockerized-native-spring-boot-app-on-heroku-container-infrastructure)
+* [Links](#links)
+
+
 # New to GraalVM with Spring Boot?
 
 Current status of Spring's Graal support: 
