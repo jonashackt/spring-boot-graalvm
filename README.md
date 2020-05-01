@@ -31,6 +31,7 @@ This example project shows how to compile a Webflux based Spring Boot applicatio
   * [Set start-class element in pom.xml](#set-start-class-element-in-pomxml)
   * [Craft a compile.sh script](#craft-a-compilesh-script)
   * [Run the compile.sh script & start your native Spring Boot App](#run-the-compilesh-script--start-your-native-spring-boot-app)
+* [Comparing Startup time & Memory footprint]()
 * [Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI](#build-and-run-your-native-image-compilation-on-a-cloud-ci-provider-like-travisci)
   * [Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error](#prevent-the-javalangunsatisfiedlinkerror-no-netty_transport_native_epoll_x86_64-in-javalibrarypath-usrjavapackageslib-usrlib64-lib64-lib-usrlib-error)
   * [Tackling the 'There was an error linking the native image /usr/bin/ld: final link failed: Memory exhausted' error](#tackling-the-there-was-an-error-linking-the-native-image-usrbinld-final-link-failed-memory-exhausted-error)
@@ -531,6 +532,81 @@ I also prepared a small asciicast - but be aware, you'll maybe don't get it sinc
 __Your Spring Boot App started in 0.083!!__ Simply access the App via http://localhost:8080/hello.
 
 
+
+# Comparing Startup time & Memory footprint 
+
+Ok, the initial goal was to run our beloved Spring Boot Apps at lightning speed. Now we have a "normal" Spring Boot App, that we're able to run with:
+
+```
+$ java -jar target/spring-boot-graal-0.0.1-SNAPSHOT.jar
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::             (v2.3.0.M4)
+
+2020-04-30 15:40:21.187  INFO 40149 --- [           main] i.j.s.SpringBootHelloApplication         : Starting SpringBootHelloApplication v0.0.1-SNAPSHOT on PikeBook.fritz.box with PID 40149 (/Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target/spring-boot-graal-0.0.1-SNAPSHOT.jar started by jonashecht in /Users/jonashecht/dev/spring-boot/spring-boot-graalvm)
+2020-04-30 15:40:21.190  INFO 40149 --- [           main] i.j.s.SpringBootHelloApplication         : No active profile set, falling back to default profiles: default
+2020-04-30 15:40:22.280  INFO 40149 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+2020-04-30 15:40:22.288  INFO 40149 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 1.47 seconds (JVM running for 1.924)
+```
+
+The standard way takes about `1.47 seconds` to start up and it uses around `491 MB` of RAM:
+
+```
+  PID TTY           TIME CMD
+Processes: 545 total, 2 running, 1 stuck, 542 sleeping, 2943 threads                                                                                                     16:21:23
+Load Avg: 1.35, 1.92, 2.30  CPU usage: 3.96% user, 3.84% sys, 92.19% idle  SharedLibs: 240M resident, 63M data, 19M linkedit.
+MemRegions: 224056 total, 3655M resident, 50M private, 6794M shared. PhysMem: 16G used (3579M wired), 93M unused.
+VM: 2744G vsize, 1997M framework vsize, 64447396(189) swapins, 66758016(0) swapouts. Networks: packets: 34854978/40G in, 30746488/34G out.
+Disks: 28626843/545G read, 11039646/423G written.
+
+PID    COMMAND      %CPU TIME     #TH  #WQ  #POR MEM  PURG CMPR PGRP  PPID STATE    BOOSTS    %CPU_ME %CPU_OTHRS UID  FAULTS  COW  MSGS MSGR SYSBSD SYSM CSW    PAGE IDLE POWE
+40862  java         0.1  00:05.46 27   1    112  491M 0B   0B   40862 1592 sleeping *0[1]     0.00000 0.00000    501  136365  1942 5891 2919 52253+ 8577 21848+ 7148 733+ 0.8
+```
+
+Now comparing our Natively compiled Spring Boot App, we see a startup time of about `0.078 seconds`:
+
+```
+./spring-boot-graal
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::
+
+2020-05-01 10:25:31.200  INFO 42231 --- [           main] i.j.s.SpringBootHelloApplication         : Starting SpringBootHelloApplication on PikeBook.fritz.box with PID 42231 (/Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target/native-image/spring-boot-graal started by jonashecht in /Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target/native-image)
+2020-05-01 10:25:31.200  INFO 42231 --- [           main] i.j.s.SpringBootHelloApplication         : No active profile set, falling back to default profiles: default
+2020-05-01 10:25:31.241  WARN 42231 --- [           main] io.netty.channel.DefaultChannelId        : Failed to find the current process ID from ''; using a random value: 635087100
+2020-05-01 10:25:31.245  INFO 42231 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+2020-05-01 10:25:31.245  INFO 42231 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 0.078 seconds (JVM running for 0.08)
+```
+
+and uses only `30MB` of RAM:
+
+```
+Processes: 501 total, 2 running, 499 sleeping, 2715 threads                                                                                                              10:26:05
+Load Avg: 5.73, 10.11, 6.17  CPU usage: 4.33% user, 3.86% sys, 91.79% idle  SharedLibs: 162M resident, 34M data, 9248K linkedit.
+MemRegions: 214693 total, 2846M resident, 72M private, 1677M shared. PhysMem: 11G used (3607M wired), 4987M unused.
+VM: 2448G vsize, 1997M framework vsize, 77090986(192) swapins, 80042677(0) swapouts.  Networks: packets: 31169140/37G in, 27833716/33G out.
+Disks: 29775686/600G read, 11686485/480G written.
+
+PID    COMMAND      %CPU TIME     #TH  #WQ  #POR MEM  PURG CMPR PGRP  PPID STATE    BOOSTS    %CPU_ME %CPU_OTHRS UID  FAULT COW  MSGS MSGR SYSB SYSM CSW  PAGE IDLE POWE INST CYCL
+42231  spring-boot- 0.0  00:00.08 7    1    38   30M  0B   0B   42231 1592 sleeping *0[1]     0.00000 0.00000    501  17416 2360 77   20   2186 186  174  27   2    0.0  0    0
+```
+
+So with a default Spring App we have around 500MB memory consumption, a natively compiled Spring App has only 30MB. That means, we could run more than 15 Spring microservices with the same amount of RAM we needed for only one standard Spring microservice! Wohoo! :) 
+
+And not to mention the startup times. Around 1.5 seconds versus only 78 milli seconds. So even our Kubernetes cluster is able to scale our Spring Boot Apps at lightning speed!
+
+
+
 # Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI
 
 As we are used to test-driven development and we rely on very new code, which is for sure subject to change in the near future, we should be also able to automatically run our GraalVM Native image complilation on a Cloud CI provider like 
@@ -924,7 +1000,7 @@ Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler i
 
 Then it is very likely that your Docker Engine has not enough RAM it is able to use! In my Mac installation the default is only `2.00 GB`:
 
-[docker-mac-memory](screenshots/docker-mac-memory.png)
+![docker-mac-memory](screenshots/docker-mac-memory.png)
 
 As [stated in the comments of this so q&a](https://stackoverflow.com/questions/57935533/native-image-building-process-is-frozen-in-quarkus), you have to give Docker much more memory since the GraalVM Native Image compilation process is really RAM intensive. I had a working local compilation in the Docker Container when I gave Docker `12.00 GB` of RAM.
 
@@ -1355,6 +1431,7 @@ $ heroku logs -a spring-boot-graal
 2020-04-24T12:02:41.427326+00:00 app[web.1]: 2020-04-24 12:02:41.427  INFO 3 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 59884
 2020-04-24T12:02:41.430874+00:00 app[web.1]: 2020-04-24 12:02:41.430  INFO 3 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 0.156 seconds (JVM running for 0.159)
 ```
+
 
 
 
