@@ -31,6 +31,7 @@ This example project shows how to compile a Webflux based Spring Boot applicatio
   * [Set start-class element in pom.xml](#set-start-class-element-in-pomxml)
   * [Craft a compile.sh script](#craft-a-compilesh-script)
   * [Run the compile.sh script & start your native Spring Boot App](#run-the-compilesh-script--start-your-native-spring-boot-app)
+* [Comparing Startup time & Memory footprint](#comparing-startup-time--memory-footprint)
 * [Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI](#build-and-run-your-native-image-compilation-on-a-cloud-ci-provider-like-travisci)
   * [Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error](#prevent-the-javalangunsatisfiedlinkerror-no-netty_transport_native_epoll_x86_64-in-javalibrarypath-usrjavapackageslib-usrlib64-lib64-lib-usrlib-error)
   * [Tackling the 'There was an error linking the native image /usr/bin/ld: final link failed: Memory exhausted' error](#tackling-the-there-was-an-error-linking-the-native-image-usrbinld-final-link-failed-memory-exhausted-error)
@@ -43,6 +44,7 @@ This example project shows how to compile a Webflux based Spring Boot applicatio
   * [Work around the Heroku 512MB RAM cap: Building our Dockerimage with TravisCI](#work-around-the-heroku-512mb-ram-cap-building-our-dockerimage-with-travisci)
   * [Tackling 'Error: Image build request failed with exit status 137' with the -J-Xmx parameter](#tackling-error-image-build-request-failed-with-exit-status-137-with-the--j-xmx-parameter)
   * [Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure](#pushing-and-releasing-our-dockerized-native-spring-boot-app-on-heroku-container-infrastructure)
+* [Autorelease on Docker Hub with TravisCI](#autorelease-on-docker-hub-with-travisci)
 * [Links](#links)
 
 
@@ -531,6 +533,81 @@ I also prepared a small asciicast - but be aware, you'll maybe don't get it sinc
 __Your Spring Boot App started in 0.083!!__ Simply access the App via http://localhost:8080/hello.
 
 
+
+# Comparing Startup time & Memory footprint 
+
+Ok, the initial goal was to run our beloved Spring Boot Apps at lightning speed. Now we have a "normal" Spring Boot App, that we're able to run with:
+
+```
+$ java -jar target/spring-boot-graal-0.0.1-SNAPSHOT.jar
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::             (v2.3.0.M4)
+
+2020-04-30 15:40:21.187  INFO 40149 --- [           main] i.j.s.SpringBootHelloApplication         : Starting SpringBootHelloApplication v0.0.1-SNAPSHOT on PikeBook.fritz.box with PID 40149 (/Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target/spring-boot-graal-0.0.1-SNAPSHOT.jar started by jonashecht in /Users/jonashecht/dev/spring-boot/spring-boot-graalvm)
+2020-04-30 15:40:21.190  INFO 40149 --- [           main] i.j.s.SpringBootHelloApplication         : No active profile set, falling back to default profiles: default
+2020-04-30 15:40:22.280  INFO 40149 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+2020-04-30 15:40:22.288  INFO 40149 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 1.47 seconds (JVM running for 1.924)
+```
+
+The standard way takes about `1.47 seconds` to start up and it uses around `491 MB` of RAM:
+
+```
+  PID TTY           TIME CMD
+Processes: 545 total, 2 running, 1 stuck, 542 sleeping, 2943 threads                                                                                                     16:21:23
+Load Avg: 1.35, 1.92, 2.30  CPU usage: 3.96% user, 3.84% sys, 92.19% idle  SharedLibs: 240M resident, 63M data, 19M linkedit.
+MemRegions: 224056 total, 3655M resident, 50M private, 6794M shared. PhysMem: 16G used (3579M wired), 93M unused.
+VM: 2744G vsize, 1997M framework vsize, 64447396(189) swapins, 66758016(0) swapouts. Networks: packets: 34854978/40G in, 30746488/34G out.
+Disks: 28626843/545G read, 11039646/423G written.
+
+PID    COMMAND      %CPU TIME     #TH  #WQ  #POR MEM  PURG CMPR PGRP  PPID STATE    BOOSTS    %CPU_ME %CPU_OTHRS UID  FAULTS  COW  MSGS MSGR SYSBSD SYSM CSW    PAGE IDLE POWE
+40862  java         0.1  00:05.46 27   1    112  491M 0B   0B   40862 1592 sleeping *0[1]     0.00000 0.00000    501  136365  1942 5891 2919 52253+ 8577 21848+ 7148 733+ 0.8
+```
+
+Now comparing our Natively compiled Spring Boot App, we see a startup time of about `0.078 seconds`:
+
+```
+./spring-boot-graal
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::
+
+2020-05-01 10:25:31.200  INFO 42231 --- [           main] i.j.s.SpringBootHelloApplication         : Starting SpringBootHelloApplication on PikeBook.fritz.box with PID 42231 (/Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target/native-image/spring-boot-graal started by jonashecht in /Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target/native-image)
+2020-05-01 10:25:31.200  INFO 42231 --- [           main] i.j.s.SpringBootHelloApplication         : No active profile set, falling back to default profiles: default
+2020-05-01 10:25:31.241  WARN 42231 --- [           main] io.netty.channel.DefaultChannelId        : Failed to find the current process ID from ''; using a random value: 635087100
+2020-05-01 10:25:31.245  INFO 42231 --- [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port(s): 8080
+2020-05-01 10:25:31.245  INFO 42231 --- [           main] i.j.s.SpringBootHelloApplication         : Started SpringBootHelloApplication in 0.078 seconds (JVM running for 0.08)
+```
+
+and uses only `30MB` of RAM:
+
+```
+Processes: 501 total, 2 running, 499 sleeping, 2715 threads                                                                                                              10:26:05
+Load Avg: 5.73, 10.11, 6.17  CPU usage: 4.33% user, 3.86% sys, 91.79% idle  SharedLibs: 162M resident, 34M data, 9248K linkedit.
+MemRegions: 214693 total, 2846M resident, 72M private, 1677M shared. PhysMem: 11G used (3607M wired), 4987M unused.
+VM: 2448G vsize, 1997M framework vsize, 77090986(192) swapins, 80042677(0) swapouts.  Networks: packets: 31169140/37G in, 27833716/33G out.
+Disks: 29775686/600G read, 11686485/480G written.
+
+PID    COMMAND      %CPU TIME     #TH  #WQ  #POR MEM  PURG CMPR PGRP  PPID STATE    BOOSTS    %CPU_ME %CPU_OTHRS UID  FAULT COW  MSGS MSGR SYSB SYSM CSW  PAGE IDLE POWE INST CYCL
+42231  spring-boot- 0.0  00:00.08 7    1    38   30M  0B   0B   42231 1592 sleeping *0[1]     0.00000 0.00000    501  17416 2360 77   20   2186 186  174  27   2    0.0  0    0
+```
+
+So with a default Spring App we have around 500MB memory consumption, a natively compiled Spring App has only 30MB. That means, we could run more than 15 Spring microservices with the same amount of RAM we needed for only one standard Spring microservice! Wohoo! :) 
+
+And not to mention the startup times. Around 1.5 seconds versus only 78 milli seconds. So even our Kubernetes cluster is able to scale our Spring Boot Apps at lightning speed!
+
+
+
 # Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI
 
 As we are used to test-driven development and we rely on very new code, which is for sure subject to change in the near future, we should be also able to automatically run our GraalVM Native image complilation on a Cloud CI provider like 
@@ -924,7 +1001,7 @@ Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler i
 
 Then it is very likely that your Docker Engine has not enough RAM it is able to use! In my Mac installation the default is only `2.00 GB`:
 
-[docker-mac-memory](screenshots/docker-mac-memory.png)
+![docker-mac-memory](screenshots/docker-mac-memory.png)
 
 As [stated in the comments of this so q&a](https://stackoverflow.com/questions/57935533/native-image-building-process-is-frozen-in-quarkus), you have to give Docker much more memory since the GraalVM Native Image compilation process is really RAM intensive. I had a working local compilation in the Docker Container when I gave Docker `12.00 GB` of RAM.
 
@@ -1358,7 +1435,8 @@ $ heroku logs -a spring-boot-graal
 
 
 
-### TODO: Autorelease on Docker Hub
+
+# Autorelease on Docker Hub with TravisCI
 
 We could try to __autorelease to Docker Hub on hub.docker.com:__ 
 
@@ -1368,6 +1446,37 @@ Therefore head over to the repositories tab in Docker Hub and click `Create Repo
 
 As the docs state, there are some config options to [setup automated builds](https://docs.docker.com/docker-hub/builds/).
 
+__BUT:__ As the automatic builds feature rely on the Docker Hub build infrastructure, there woun't be enough RAM for our builds to succeed! You may try it, but you'll see those errors at the end:
+
+```
+13:13:26.080 [ForkJoinPool-2-worker-3] DEBUG io.netty.handler.codec.compression.ZlibCodecFactory - -Dio.netty.noJdkZlibEncoder: false
+#
+# There is insufficient memory for the Java Runtime Environment to continue.
+# Native memory allocation (mmap) failed to map 578920448 bytes for committing reserved memory.
+# An error report file with more information is saved as:
+# /build/target/native-image/hs_err_pid258.log
+[91mOpenJDK 64-Bit Server VM warning: INFO: os::commit_memory(0x000000078d96d000, 578920448, 0) failed; error='Not enough space' (errno=12)
+[0m
+[91mError: Image build request failed with exit status 1[0m
+```
+
+Since our TravisCI build is now enabled to successfully run our GraalVM Native Image compilation in a Docker build, we could live without the automatic builds feature of Docker Hub - and simply push our Travis' build image to Docker Hub also!
+
+Therefore you need to create an Access Token in your Docker Hub account at https://hub.docker.com/settings/security
+
+Then head over to your TravisCI project settings and add the environment variables `DOCKER_HUB_TOKEN` and `DOCKER_HUB_USERNAME` as already happended for Heroku Container Registry.
+
+The final step then is to add the correct `docker login` and `docker push` commands to our [.travis.yml](.travis.yml):
+
+```yaml
+        # Push to Docker Hub also, since automatic Builds there don't have anough RAM to do a docker build
+        - echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+        - docker tag registry.heroku.com/spring-boot-graal/web jonashackt/spring-boot-graalvm:latest
+        - docker push jonashackt/spring-boot-graalvm:latest
+```
+
+Be sure to also tag your image correctly according to your created Docker Hub repository.
+
 Finally, we should see our Docker images released on https://hub.docker.com/r/jonashackt/spring-boot-graalvm and could run this app simply by executing:
 
 ```
@@ -1375,9 +1484,6 @@ docker run -e "PORT=8087" -p 8087:8087 jonashackt/spring-boot-graalvm:latest
 ```
 
 This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app locally.
-
-> But this way also has it's downsides: The process takes far to long and the automatic builds do not work as I expected them to: Do the Docker build asap after a push into our repo!
-
 
 
 

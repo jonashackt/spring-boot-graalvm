@@ -47,4 +47,9 @@ jobs:
         # Release Dockerized Native Spring Boot App on Heroku
         - ./heroku-release.sh spring-boot-graal
 
+        # Push to Docker Hub also, since automatic Builds there don't have anough RAM to do a docker build
+        - echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+        - docker tag registry.heroku.com/spring-boot-graal/web jonashackt/spring-boot-graalvm:latest
+        - docker push jonashackt/spring-boot-graalvm:latest
+
       name: "Native Image compile in Docker on Travis & Push to Heroku Container Registry"
