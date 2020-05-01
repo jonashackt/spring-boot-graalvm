@@ -44,6 +44,7 @@ This example project shows how to compile a Webflux based Spring Boot applicatio
   * [Work around the Heroku 512MB RAM cap: Building our Dockerimage with TravisCI](#work-around-the-heroku-512mb-ram-cap-building-our-dockerimage-with-travisci)
   * [Tackling 'Error: Image build request failed with exit status 137' with the -J-Xmx parameter](#tackling-error-image-build-request-failed-with-exit-status-137-with-the--j-xmx-parameter)
   * [Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure](#pushing-and-releasing-our-dockerized-native-spring-boot-app-on-heroku-container-infrastructure)
+* [Autorelease on Docker Hub with TravisCI]()
 * [Links](#links)
 
 
@@ -1435,7 +1436,7 @@ $ heroku logs -a spring-boot-graal
 
 
 
-### TODO: Autorelease on Docker Hub
+# Autorelease on Docker Hub with TravisCI
 
 We could try to __autorelease to Docker Hub on hub.docker.com:__ 
 
@@ -1445,6 +1446,37 @@ Therefore head over to the repositories tab in Docker Hub and click `Create Repo
 
 As the docs state, there are some config options to [setup automated builds](https://docs.docker.com/docker-hub/builds/).
 
+__BUT:__ As the automatic builds feature rely on the Docker Hub build infrastructure, there woun't be enough RAM for our builds to succeed! You may try it, but you'll see those errors at the end:
+
+```
+13:13:26.080 [ForkJoinPool-2-worker-3] DEBUG io.netty.handler.codec.compression.ZlibCodecFactory - -Dio.netty.noJdkZlibEncoder: false
+#
+# There is insufficient memory for the Java Runtime Environment to continue.
+# Native memory allocation (mmap) failed to map 578920448 bytes for committing reserved memory.
+# An error report file with more information is saved as:
+# /build/target/native-image/hs_err_pid258.log
+[91mOpenJDK 64-Bit Server VM warning: INFO: os::commit_memory(0x000000078d96d000, 578920448, 0) failed; error='Not enough space' (errno=12)
+[0m
+[91mError: Image build request failed with exit status 1[0m
+```
+
+Since our TravisCI build is now enabled to successfully run our GraalVM Native Image compilation in a Docker build, we could live without the automatic builds feature of Docker Hub - and simply push our Travis' build image to Docker Hub also!
+
+Therefore you need to create an Access Token in your Docker Hub account at https://hub.docker.com/settings/security
+
+Then head over to your TravisCI project settings and add the environment variables `DOCKER_HUB_TOKEN` and `DOCKER_HUB_USERNAME` as already happended for Heroku Container Registry.
+
+The final step then is to add the correct `docker login` and `docker push` commands to our [.travis.yml](.travis.yml):
+
+```yaml
+        # Push to Docker Hub also, since automatic Builds there don't have anough RAM to do a docker build
+        - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+        - docker tag registry.heroku.com/spring-boot-graal/web jonashackt/spring-boot-graalvm:latest
+        - docker push jonashackt/spring-boot-graalvm:latest
+```
+
+Be sure to also tag your image correctly according to your created Docker Hub repository.
+
 Finally, we should see our Docker images released on https://hub.docker.com/r/jonashackt/spring-boot-graalvm and could run this app simply by executing:
 
 ```
@@ -1452,9 +1484,6 @@ docker run -e "PORT=8087" -p 8087:8087 jonashackt/spring-boot-graalvm:latest
 ```
 
 This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app locally.
-
-> But this way also has it's downsides: The process takes far to long and the automatic builds do not work as I expected them to: Do the Docker build asap after a push into our repo!
-
 
 
 
