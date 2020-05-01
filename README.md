@@ -31,7 +31,7 @@ This example project shows how to compile a Webflux based Spring Boot applicatio
   * [Set start-class element in pom.xml](#set-start-class-element-in-pomxml)
   * [Craft a compile.sh script](#craft-a-compilesh-script)
   * [Run the compile.sh script & start your native Spring Boot App](#run-the-compilesh-script--start-your-native-spring-boot-app)
-* [Comparing Startup time & Memory footprint]()
+* [Comparing Startup time & Memory footprint](#comparing-startup-time--memory-footprint)
 * [Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI](#build-and-run-your-native-image-compilation-on-a-cloud-ci-provider-like-travisci)
   * [Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error](#prevent-the-javalangunsatisfiedlinkerror-no-netty_transport_native_epoll_x86_64-in-javalibrarypath-usrjavapackageslib-usrlib64-lib64-lib-usrlib-error)
   * [Tackling the 'There was an error linking the native image /usr/bin/ld: final link failed: Memory exhausted' error](#tackling-the-there-was-an-error-linking-the-native-image-usrbinld-final-link-failed-memory-exhausted-error)
@@ -44,7 +44,7 @@ This example project shows how to compile a Webflux based Spring Boot applicatio
   * [Work around the Heroku 512MB RAM cap: Building our Dockerimage with TravisCI](#work-around-the-heroku-512mb-ram-cap-building-our-dockerimage-with-travisci)
   * [Tackling 'Error: Image build request failed with exit status 137' with the -J-Xmx parameter](#tackling-error-image-build-request-failed-with-exit-status-137-with-the--j-xmx-parameter)
   * [Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure](#pushing-and-releasing-our-dockerized-native-spring-boot-app-on-heroku-container-infrastructure)
-* [Autorelease on Docker Hub with TravisCI]()
+* [Autorelease on Docker Hub with TravisCI](#autorelease-on-docker-hub-with-travisci)
 * [Links](#links)
 
 
@@ -1470,7 +1470,7 @@ The final step then is to add the correct `docker login` and `docker push` comma
 
 ```yaml
         # Push to Docker Hub also, since automatic Builds there don't have anough RAM to do a docker build
-        - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+        - echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
         - docker tag registry.heroku.com/spring-boot-graal/web jonashackt/spring-boot-graalvm:latest
         - docker push jonashackt/spring-boot-graalvm:latest
 ```
