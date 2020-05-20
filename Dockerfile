@@ -1,6 +1,6 @@
 # Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
 # https://hub.docker.com/r/oracle/graalvm-ce image
-FROM oracle/graalvm-ce:20.0.0-java11
+FROM oracle/graalvm-ce:20.1.0-java11
 
 ADD . /build
 WORKDIR /build
@@ -24,7 +24,7 @@ RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh
 
 
 # We use a Docker multi-stage build here in order that we only take the compiled native Spring Boot App from the first build container
-FROM oracle/graalvm-ce:20.0.0-java11
+FROM oracle/graalvm-ce:20.1.0-java11
 
 MAINTAINER Jonas Hecht
 
