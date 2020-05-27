@@ -24,7 +24,7 @@ RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh
 
 
 # We use a Docker multi-stage build here in order that we only take the compiled native Spring Boot App from the first build container
-FROM oracle/graalvm-ce:20.1.0-java11
+FROM oraclelinux:7-slim
 
 MAINTAINER Jonas Hecht
 
