@@ -1027,6 +1027,10 @@ COPY --from=0 "/build/target/native-image/spring-boot-graal" spring-boot-graal
 CMD [ "sh", "-c", "./spring-boot-graal" ]
 ```
 
+Additionally the second container isn't based on the `oracle/graalvm-ce` image containing a GraalVM installation, Maven and the `native-image` command - but instead uses [the base image of this image](https://github.com/oracle/docker-images/blob/master/GraalVM/CE/Dockerfile.java11), which is `oraclelinux:7-slim`.
+
+With that we reduce the resulting Docker image size from around `1.48GB` to only `186MB`!
+
 Let't run our Multi-stage build with the following command:
 
 
