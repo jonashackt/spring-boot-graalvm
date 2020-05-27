@@ -225,44 +225,21 @@ Now we have everything in place to create a Testcase [HelloRouterTest](src/test/
 ```java
 package io.jonashackt.springbootgraal;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.web.reactive.function.client.ClientResponse;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-@ExtendWith(SpringExtension.class)
-@SpringBootTest(
-		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class HelloRouterTest {
 
-	@LocalServerPort
-	private int port;
-
-	private WebClient webClient;
-
-	@BeforeEach
-	public void init() {
-		webClient = WebClient.create("http://localhost:" + port);
-	}
-
 	@Test void
-	should_call_reactive_rest_resource() {
-		Mono<ClientResponse> result = webClient
-				.get()
-				.uri("/hello")
-				.accept(MediaType.TEXT_PLAIN)
-				.exchange();
-
-		assertEquals(HelloHandler.RESPONSE_TEXT, result.flatMap(response -> response.bodyToMono(String.class)).block());
+	should_call_reactive_rest_resource(@Autowired WebTestClient webTestClient) {
+		webTestClient.get().uri("/hello")
+			.accept(MediaType.TEXT_PLAIN)
+			.exchange()
+			.expectBody(String.class).isEqualTo(HelloHandler.RESPONSE_TEXT);
 	}
 }
 ``` 
@@ -463,8 +440,8 @@ time native-image \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
-  -DremoveUnusedAutoconfig=true \
-  -DremoveYamlSupport=true \
+  -Dspring.graal.remove-unused-autoconfig=true \
+  -Dspring.graal.remove-yaml-support=true \
   -cp $CP $MAINCLASS;
 ```
 
@@ -941,7 +918,7 @@ But we can help ourselves - we just craft a simple [Dockerfile](Dockerfile) for 
 ```dockerfile
 # Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
 # https://hub.docker.com/r/oracle/graalvm-ce image
-FROM oracle/graalvm-ce:20.0.0-java11
+FROM oracle/graalvm-ce:20.1.0-java11
 
 # For SDKMAN to work we need unzip & zip
 RUN yum install -y unzip zip
@@ -959,10 +936,10 @@ RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && mvn --version
 RUN native-image --version
 
 # Always use source sdkman-init.sh before any command, so that we will be able to use 'mvn' command
-ENTRYPOINT bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && $0 $1"
+ENTRYPOINT bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && $0"
 ```
 
-In order to enable the `mvn` command for a user of our Docker image, we craft a slightly more interesting `ENTRYPOINT` that always prefixes commands with `"source $HOME/.sdkman/bin/sdkman-init.sh`. We also use to parameters with `&& $0 $1` since we need to pass our `Mainclass` also.
+In order to enable the `mvn` command for a user of our Docker image, we craft a slightly more interesting `ENTRYPOINT` that always prefixes commands with `"source $HOME/.sdkman/bin/sdkman-init.sh`.
 
 Now let's build our Image with:
 
@@ -1015,7 +992,7 @@ Therefore let's refactor our Dockerfile:
 ```dockerfile
 # Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
 # https://hub.docker.com/r/oracle/graalvm-ce image
-FROM oracle/graalvm-ce:20.0.0-java11
+FROM oracle/graalvm-ce:20.1.0-java11
 
 ADD . /build
 WORKDIR /build
@@ -1039,7 +1016,7 @@ RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && ./compile.sh
 
 
 # We use a Docker multi-stage build here in order that we only take the compiled native Spring Boot App from the first build container
-FROM oracle/graalvm-ce:20.0.0-java11
+FROM oraclelinux:7-slim
 
 MAINTAINER Jonas Hecht
 
@@ -1081,7 +1058,7 @@ user	16m32.096s
 sys	1m34.441s
 Removing intermediate container 151e1413ec2f
  ---> be671d4f237f
-Step 10/13 : FROM oracle/graalvm-ce:20.0.0-java11
+Step 10/13 : FROM oracle/graalvm-ce:20.1.0-java11
  ---> 364d0bb387bd
 Step 11/13 : MAINTAINER Jonas Hecht
  ---> Using cache
@@ -1315,7 +1292,7 @@ Therefore we need to [configure some environment variables in Travis in order to
 
 ![travis-env-vars-heroku](screenshots/travis-env-vars-heroku.png)
 
-With the following configuration inside our [.travis.yml](.travis.yml], we should be able to successfully log in to Heroku Container Registry:
+With the following configuration inside our [.travis.yml](.travis.yml), we should be able to successfully log in to Heroku Container Registry:
 
 ```yaml
     - script:
