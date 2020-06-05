@@ -585,7 +585,7 @@ mvn -Pnative clean package
 
 ### Tackling the 'No default constructor found Failed to instantiate java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()' error
 
-After executing the build process (which went totally fine), the resulting native image doesn't start:
+After executing the build process (which went fine), the resulting native image doesn't start without errors:
 
 ```
 ./spring-boot-graal
@@ -641,15 +641,74 @@ Caused by: java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.Spring
 	... 19 more
 ```
 
-We can fix the startup by using a new file [spring-graal-reflection.json](spring-graal-reflection.json):
+> But what is the difference between the way our [compile.sh](compile.sh) works compared to the `native-image-maven-plugin` really? The parameters are the same!
+
+I had a hard time figuring that one out! But finally I found a difference - it's all about the Spring Feature computed `spring.components`:
 
 ```
-[
-  {"name":"io.jonashackt.springbootgraal.SpringBootHelloApplication","allDeclaredFields":true,"allDeclaredMethods":true,"methods":[{"name":"<init>","parameterTypes":[] }]}
-]
+$ ./compile.sh
+...
+Excluding 104 auto-configurations from spring.factories file
+Found no META-INF/spring.components -> synthesizing one...
+Computed spring.components is
+vvv
+io.jonashackt.springbootgraal.HelloRouter=org.springframework.stereotype.Component
+io.jonashackt.springbootgraal.HelloHandler=org.springframework.stereotype.Component
+io.jonashackt.springbootgraal.SpringBootHelloApplication=org.springframework.stereotype.Component
+^^^
+Registered 3 entries
+Configuring initialization time for specific types and packages:
+#69 buildtime-init-classes   #21 buildtime-init-packages   #28 runtime-init-classes    #0 runtime-init-packages
 ```
 
-and extending the `buildArgs` tag with ` -H:ReflectionConfigurationFiles=../spring-graal-reflection.json`. But the question is: Why do we need this with the `native-image-maven-plugin` - and not within our `compile.sh`?
+with our [compile.sh](compile.sh) the Feature finds the 3 classes that are Spring Components and thus are relevant for our Application to work.
+
+```
+$ mvn -Pnative clean package
+...
+Excluding 104 auto-configurations from spring.factories file
+Found no META-INF/spring.components -> synthesizing one...
+Computed spring.components is
+vvv
+^^^
+Registered 0 entries
+Configuring initialization time for specific types and packages:
+#69 buildtime-init-classes   #21 buildtime-init-packages   #28 runtime-init-classes    #0 runtime-init-packages
+```
+
+Our Maven plugin does not recognize the three needed classes! And thus it also doesn't successfully run our application in the end, since the REST controller doesn't work, if we access it via http://localhost:8080/hello
+
+In a non-native world, our Spring Components would be explored at runtime via component scanning. But with GraalVM native image compilation, all notion of a thing called classpath is lost at runtime! So we need something to do the component scanning at build time.
+The one utility that does this is the [spring-context-indexer](https://stackoverflow.com/questions/47254907/how-can-i-create-a-spring-5-component-index/48407939) and is executed by the Spring @AutomaticFeature for us, if we use our `compile.sh`.
+
+But using the `native-image-maven-plugin` this isn't done automatically! So we have to explicitely include the [spring-context-indexer](https://mvnrepository.com/artifact/org.springframework/spring-context-indexer/5.2.6.RELEASE) dependency inside our [pom.xml]:
+
+```xml
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-indexer</artifactId>
+		</dependency>
+```
+
+Now running a Maven build, the file `target/classes/META_INF/spring.components` containing our 3 needed classes is created:
+
+```
+io.jonashackt.springbootgraal.HelloHandler=org.springframework.stereotype.Component
+io.jonashackt.springbootgraal.HelloRouter=org.springframework.stereotype.Component
+io.jonashackt.springbootgraal.SpringBootHelloApplication=org.springframework.stereotype.Component
+```
+
+And using that dependency, our Maven build finally works as expected:
+
+```
+Excluding 104 auto-configurations from spring.factories file
+Processing META-INF/spring.components files...
+Registered 3 entries
+Configuring initialization time for specific types and packages:
+#69 buildtime-init-classes   #21 buildtime-init-packages   #28 runtime-init-classes    #0 runtime-init-packages
+```
+
+__The question remains why the Spring @AutomaticFeature doesn't do that automatically only while executed via the `native-image-maven-plugin`!__
 
 
 # Comparing Startup time & Memory footprint 
