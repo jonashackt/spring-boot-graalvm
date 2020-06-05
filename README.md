@@ -427,14 +427,10 @@ cd target/native-image
 jar -xvf ../$JAR >/dev/null 2>&1
 cp -R META-INF BOOT-INF/classes
 
-echo "[-->] Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath"
+echo "[-->] Set the classpath to the contents of the fat jar (where the libs contain the Spring Graal AutomaticFeature)"
 LIBPATH=`find BOOT-INF/lib | tr '\n' ':'`
-MAVEN_REPO_HOME=~/.m2/repository
-FEATURE=$MAVEN_REPO_HOME/org/springframework/experimental/spring-graal-native/0.6.1.RELEASE/spring-graal-native-0.6.1.RELEASE.jar
-CP=BOOT-INF/classes:$LIBPATH:$FEATURE
-```
-
-The script assumes, that your Maven repository resides in your user home under `~/.m2/repository` - change that the variable `MAVEN_REPO_HOME` inside the [compile.sh](compile.sh), if that isn't the case! 
+CP=BOOT-INF/classes:$LIBPATH
+``` 
 
 Now finally the GraalVM Native Image compilation is triggered with lot's of appropriate configuration options:
 
