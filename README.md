@@ -39,6 +39,8 @@ This project is used as example in some articles:
   * [Set start-class element in pom.xml](#set-start-class-element-in-pomxml)
   * [Craft a compile.sh script](#craft-a-compilesh-script)
   * [Run the compile.sh script & start your native Spring Boot App](#run-the-compilesh-script--start-your-native-spring-boot-app)
+* [Doing all the steps together using the native-image-maven-plugin](#doing-all-the-steps-together-using-the-native-image-maven-plugin)
+  * [Tackling the 'No default constructor found Failed to instantiate java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.()' error](#tackling-the-no-default-constructor-found-failed-to-instantiate-javalangnosuchmethodexception-iojonashacktspringbootgraalspringboothelloapplication-error)
 * [Comparing Startup time & Memory footprint](#comparing-startup-time--memory-footprint)
 * [Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI](#build-and-run-your-native-image-compilation-on-a-cloud-ci-provider-like-travisci)
   * [Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error](#prevent-the-javalangunsatisfiedlinkerror-no-netty_transport_native_epoll_x86_64-in-javalibrarypath-usrjavapackageslib-usrlib64-lib64-lib-usrlib-error)
@@ -427,14 +429,10 @@ cd target/native-image
 jar -xvf ../$JAR >/dev/null 2>&1
 cp -R META-INF BOOT-INF/classes
 
-echo "[-->] Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath"
+echo "[-->] Set the classpath to the contents of the fat jar (where the libs contain the Spring Graal AutomaticFeature)"
 LIBPATH=`find BOOT-INF/lib | tr '\n' ':'`
-MAVEN_REPO_HOME=~/.m2/repository
-FEATURE=$MAVEN_REPO_HOME/org/springframework/experimental/spring-graal-native/0.6.1.RELEASE/spring-graal-native-0.6.1.RELEASE.jar
-CP=BOOT-INF/classes:$LIBPATH:$FEATURE
-```
-
-The script assumes, that your Maven repository resides in your user home under `~/.m2/repository` - change that the variable `MAVEN_REPO_HOME` inside the [compile.sh](compile.sh), if that isn't the case! 
+CP=BOOT-INF/classes:$LIBPATH
+``` 
 
 Now finally the GraalVM Native Image compilation is triggered with lot's of appropriate configuration options:
 
@@ -516,6 +514,202 @@ I also prepared a small asciicast - but be aware, you'll maybe don't get it sinc
 
 __Your Spring Boot App started in 0.083!!__ Simply access the App via http://localhost:8080/hello.
 
+
+
+# Doing all the steps together using the native-image-maven-plugin
+
+Currently it really makes sense to hand-craft a bash script like our [compile.sh](compile.sh) in order to be able to debug all those `native-image` options!
+
+But the development of GraalVM and the spring-graalvm-native projects really go fast. See [this post about GraalVM 20.1.0 release](https://medium.com/graalvm/graalvm-20-1-7ce7e89f066b) for example. So it makes also sense to have a look at the posibility to do all the needed steps to compile a Spring Boot app with GraalVM native images by only using the [native-image-maven-plugin](https://search.maven.org/search?q=g:org.graalvm.nativeimage%20AND%20a:native-image-maven-plugin).
+
+> For more information about the `native-image-maven-plugin` see this post: https://medium.com/graalvm/simplifying-native-image-generation-with-maven-plugin-and-embeddable-configuration-d5b283b92f57
+
+Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described in the spring-graalvm-native docs](https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html#_add_the_maven_plugin):
+
+```xml
+	<profiles>
+		<profile>
+			<id>native</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.nativeimage</groupId>
+						<artifactId>native-image-maven-plugin</artifactId>
+						<version>20.1.0</version>
+						<configuration>
+							<buildArgs>--no-server -J-Xmx4G --no-fallback -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
+                            <imageName>${project.artifactId}</imageName>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>native-image</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.springframework.boot</groupId>
+						<artifactId>spring-boot-maven-plugin</artifactId>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+```
+
+The `buildArgs` tag is crucial here! We need to configure everything needed to successfully run a `native-image` command for our Spring Boot app as already used inside our [compile.sh](compile.sh).
+
+But we can leave out `-cp $CP $MAINCLASS` parameter since they are already provided by the plugin. Remember now we run the `native-image` compilation from within the Maven pom context where all those is known.
+
+Using the `<imageName>${project.artifactId}</imageName>` is a good idea in order to use our `artifactId` for the resulting executable image name. Otherwise we end up with a fully qualified class name like `io.jonashackt.springbootgraal.springboothelloapplication`.
+
+Just remember to have the `start-class` property in place:
+
+```
+<properties>
+		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
+        ...
+</properties>
+```
+
+That should already suffice! Now we can simply run our Maven profile with:
+
+```
+mvn -Pnative clean package
+```
+
+
+### Tackling the 'No default constructor found Failed to instantiate java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()' error
+
+After executing the build process (which went fine), the resulting native image doesn't start without errors:
+
+```
+./spring-boot-graal
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::
+
+Jun 05, 2020 10:46:27 AM org.springframework.boot.StartupInfoLogger logStarting
+INFO: Starting application on PikeBook.fritz.box with PID 33047 (started by jonashecht in /Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target)
+Jun 05, 2020 10:46:27 AM org.springframework.boot.SpringApplication logStartupProfileInfo
+INFO: No active profile set, falling back to default profiles: default
+Jun 05, 2020 10:46:27 AM org.springframework.context.support.AbstractApplicationContext refresh
+WARNING: Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'springBootHelloApplication': Instantiation of bean failed; nested exception is org.springframework.beans.BeanInstantiationException: Failed to instantiate [io.jonashackt.springbootgraal.SpringBootHelloApplication]: No default constructor found; nested exception is java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()
+Jun 05, 2020 10:46:27 AM org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener logMessage
+INFO:
+
+Error starting ApplicationContext. To display the conditions report re-run your application with 'debug' enabled.
+Jun 05, 2020 10:46:27 AM org.springframework.boot.SpringApplication reportFailure
+SEVERE: Application run failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'springBootHelloApplication': Instantiation of bean failed; nested exception is org.springframework.beans.BeanInstantiationException: Failed to instantiate [io.jonashackt.springbootgraal.SpringBootHelloApplication]: No default constructor found; nested exception is java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateBean(AbstractAutowireCapableBeanFactory.java:1320)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1214)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:557)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:517)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:323)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:226)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:321)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:895)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:878)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:550)
+	at org.springframework.boot.web.reactive.context.ReactiveWebServerApplicationContext.refresh(ReactiveWebServerApplicationContext.java:62)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:758)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:750)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:397)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:315)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1237)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1226)
+	at io.jonashackt.springbootgraal.SpringBootHelloApplication.main(SpringBootHelloApplication.java:10)
+Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [io.jonashackt.springbootgraal.SpringBootHelloApplication]: No default constructor found; nested exception is java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:83)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateBean(AbstractAutowireCapableBeanFactory.java:1312)
+	... 18 more
+Caused by: java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()
+	at java.lang.Class.getConstructor0(DynamicHub.java:3349)
+	at java.lang.Class.getDeclaredConstructor(DynamicHub.java:2553)
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:78)
+	... 19 more
+```
+
+> But what is the difference between the way our [compile.sh](compile.sh) works compared to the `native-image-maven-plugin` really? The parameters are the same!
+
+I had a hard time figuring that one out! But finally I found a difference - it's all about the Spring Feature computed `spring.components`:
+
+```
+$ ./compile.sh
+...
+Excluding 104 auto-configurations from spring.factories file
+Found no META-INF/spring.components -> synthesizing one...
+Computed spring.components is
+vvv
+io.jonashackt.springbootgraal.HelloRouter=org.springframework.stereotype.Component
+io.jonashackt.springbootgraal.HelloHandler=org.springframework.stereotype.Component
+io.jonashackt.springbootgraal.SpringBootHelloApplication=org.springframework.stereotype.Component
+^^^
+Registered 3 entries
+Configuring initialization time for specific types and packages:
+#69 buildtime-init-classes   #21 buildtime-init-packages   #28 runtime-init-classes    #0 runtime-init-packages
+```
+
+with our [compile.sh](compile.sh) the Feature finds the 3 classes that are Spring Components and thus are relevant for our Application to work.
+
+```
+$ mvn -Pnative clean package
+...
+Excluding 104 auto-configurations from spring.factories file
+Found no META-INF/spring.components -> synthesizing one...
+Computed spring.components is
+vvv
+^^^
+Registered 0 entries
+Configuring initialization time for specific types and packages:
+#69 buildtime-init-classes   #21 buildtime-init-packages   #28 runtime-init-classes    #0 runtime-init-packages
+```
+
+Our Maven plugin does not recognize the three needed classes! And thus it also doesn't successfully run our application in the end, since the REST controller doesn't work, if we access it via http://localhost:8080/hello
+
+In a non-native world, our Spring Components would be explored at runtime via component scanning. But with GraalVM native image compilation, all notion of a thing called classpath is lost at runtime! So we need something to do the component scanning at build time.
+The one utility that does this is the [spring-context-indexer](https://stackoverflow.com/questions/47254907/how-can-i-create-a-spring-5-component-index/48407939) and is executed by the Spring @AutomaticFeature for us, if we use our `compile.sh`.
+
+But using the `native-image-maven-plugin` this isn't done automatically! So we have to explicitely include the [spring-context-indexer](https://mvnrepository.com/artifact/org.springframework/spring-context-indexer/5.2.6.RELEASE) dependency inside our [pom.xml]:
+
+```xml
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-indexer</artifactId>
+		</dependency>
+```
+
+Now running a Maven build, the file `target/classes/META_INF/spring.components` containing our 3 needed classes is created:
+
+```
+io.jonashackt.springbootgraal.HelloHandler=org.springframework.stereotype.Component
+io.jonashackt.springbootgraal.HelloRouter=org.springframework.stereotype.Component
+io.jonashackt.springbootgraal.SpringBootHelloApplication=org.springframework.stereotype.Component
+```
+
+And using that dependency, our Maven build finally works as expected:
+
+```
+$ mvn -Pnative clean package
+...
+Excluding 104 auto-configurations from spring.factories file
+Processing META-INF/spring.components files...
+Registered 3 entries
+Configuring initialization time for specific types and packages:
+#69 buildtime-init-classes   #21 buildtime-init-packages   #28 runtime-init-classes    #0 runtime-init-packages
+...
+```
+
+__The question remains why the Spring @AutomaticFeature doesn't do that automatically only while executed via the `native-image-maven-plugin`!__
 
 
 # Comparing Startup time & Memory footprint 

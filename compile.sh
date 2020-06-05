@@ -37,11 +37,9 @@ cd target/native-image
 jar -xvf ../$JAR >/dev/null 2>&1
 cp -R META-INF BOOT-INF/classes
 
-echo "[-->] Set the classpath to the contents of the fat jar & add the Spring Graal AutomaticFeature to the classpath"
+echo "[-->] Set the classpath to the contents of the fat jar (where the libs contain the Spring Graal AutomaticFeature)"
 LIBPATH=`find BOOT-INF/lib | tr '\n' ':'`
-MAVEN_REPO_HOME=~/.m2/repository
-FEATURE=$MAVEN_REPO_HOME/org/springframework/experimental/spring-graal-native/0.6.1.RELEASE/spring-graal-native-0.6.1.RELEASE.jar
-CP=BOOT-INF/classes:$LIBPATH:$FEATURE
+CP=BOOT-INF/classes:$LIBPATH
 
 GRAALVM_VERSION=`native-image --version`
 echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"

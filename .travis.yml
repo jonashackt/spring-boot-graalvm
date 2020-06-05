@@ -12,7 +12,7 @@ jobs:
         # Install GraalVM with SDKMAN
         - curl -s "https://get.sdkman.io" | bash
         - source "$HOME/.sdkman/bin/sdkman-init.sh"
-        - sdk install java 20.0.0.r11-grl
+        - sdk install java 20.1.0.r11-grl
 
         # Check if GraalVM was installed successfully
         - java -version
@@ -29,8 +29,8 @@ jobs:
         # Check if Native Image was installed properly
         - native-image --version
 
-        # Run GraalVM Native Image compilation of Spring Boot App
-        - ./compile.sh
+        # Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
+        - mvn -Pnative clean package
 
       name: "Native Image compile on Travis Host"
 
