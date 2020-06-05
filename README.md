@@ -524,6 +524,8 @@ Currently it really makes sense to hand-craft a bash script like our [compile.sh
 
 But the development of GraalVM and the spring-graalvm-native projects really go fast. See [this post about GraalVM 20.1.0 release](https://medium.com/graalvm/graalvm-20-1-7ce7e89f066b) for example. So it makes also sense to have a look at the posibility to do all the needed steps to compile a Spring Boot app with GraalVM native images by only using the [native-image-maven-plugin](https://search.maven.org/search?q=g:org.graalvm.nativeimage%20AND%20a:native-image-maven-plugin).
 
+> For more information about the `native-image-maven-plugin` see this post: https://medium.com/graalvm/simplifying-native-image-generation-with-maven-plugin-and-embeddable-configuration-d5b283b92f57
+
 Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described in the spring-graalvm-native docs](https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html#_add_the_maven_plugin):
 
 ```xml
@@ -537,7 +539,8 @@ Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described i
 						<artifactId>native-image-maven-plugin</artifactId>
 						<version>20.1.0</version>
 						<configuration>
-							<buildArgs>--no-server -J-Xmx4G --no-fallback -H:+TraceClassInitialization -H:Name=${project.artifactId} -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
+							<buildArgs>--no-server -J-Xmx4G --no-fallback -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
+                            <imageName>${project.artifactId}</imageName>
 						</configuration>
 						<executions>
 							<execution>
@@ -562,7 +565,7 @@ The `buildArgs` tag is crucial here! We need to configure everything needed to s
 
 But we can leave out `-cp $CP $MAINCLASS` parameter since they are already provided by the plugin. Remember now we run the `native-image` compilation from within the Maven pom context where all those is known.
 
-Using the `-H:Name=${project.artifactId}` is nevertheless a good idea in order to use our `artifactId` for the resulting executable image name. Otherwise we end up with a fully qualified class name like `io.jonashackt.springbootgraal.springboothelloapplication`.
+Using the `<imageName>${project.artifactId}</imageName>` is a good idea in order to use our `artifactId` for the resulting executable image name. Otherwise we end up with a fully qualified class name like `io.jonashackt.springbootgraal.springboothelloapplication`.
 
 Just remember to have the `start-class` property in place:
 
@@ -580,6 +583,73 @@ mvn -Pnative clean package
 ```
 
 
+### Tackling the 'No default constructor found Failed to instantiate java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()' error
+
+After executing the build process (which went totally fine), the resulting native image doesn't start:
+
+```
+./spring-boot-graal
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::
+
+Jun 05, 2020 10:46:27 AM org.springframework.boot.StartupInfoLogger logStarting
+INFO: Starting application on PikeBook.fritz.box with PID 33047 (started by jonashecht in /Users/jonashecht/dev/spring-boot/spring-boot-graalvm/target)
+Jun 05, 2020 10:46:27 AM org.springframework.boot.SpringApplication logStartupProfileInfo
+INFO: No active profile set, falling back to default profiles: default
+Jun 05, 2020 10:46:27 AM org.springframework.context.support.AbstractApplicationContext refresh
+WARNING: Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'springBootHelloApplication': Instantiation of bean failed; nested exception is org.springframework.beans.BeanInstantiationException: Failed to instantiate [io.jonashackt.springbootgraal.SpringBootHelloApplication]: No default constructor found; nested exception is java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()
+Jun 05, 2020 10:46:27 AM org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener logMessage
+INFO:
+
+Error starting ApplicationContext. To display the conditions report re-run your application with 'debug' enabled.
+Jun 05, 2020 10:46:27 AM org.springframework.boot.SpringApplication reportFailure
+SEVERE: Application run failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'springBootHelloApplication': Instantiation of bean failed; nested exception is org.springframework.beans.BeanInstantiationException: Failed to instantiate [io.jonashackt.springbootgraal.SpringBootHelloApplication]: No default constructor found; nested exception is java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateBean(AbstractAutowireCapableBeanFactory.java:1320)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1214)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:557)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:517)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:323)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:226)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:321)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:895)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:878)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:550)
+	at org.springframework.boot.web.reactive.context.ReactiveWebServerApplicationContext.refresh(ReactiveWebServerApplicationContext.java:62)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:758)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:750)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:397)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:315)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1237)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1226)
+	at io.jonashackt.springbootgraal.SpringBootHelloApplication.main(SpringBootHelloApplication.java:10)
+Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [io.jonashackt.springbootgraal.SpringBootHelloApplication]: No default constructor found; nested exception is java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:83)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateBean(AbstractAutowireCapableBeanFactory.java:1312)
+	... 18 more
+Caused by: java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.<init>()
+	at java.lang.Class.getConstructor0(DynamicHub.java:3349)
+	at java.lang.Class.getDeclaredConstructor(DynamicHub.java:2553)
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:78)
+	... 19 more
+```
+
+We can fix the startup by using a new file [spring-graal-reflection.json](spring-graal-reflection.json):
+
+```
+[
+  {"name":"io.jonashackt.springbootgraal.SpringBootHelloApplication","allDeclaredFields":true,"allDeclaredMethods":true,"methods":[{"name":"<init>","parameterTypes":[] }]}
+]
+```
+
+and extending the `buildArgs` tag with ` -H:ReflectionConfigurationFiles=../spring-graal-reflection.json`. But the question is: Why do we need this with the `native-image-maven-plugin` - and not within our `compile.sh`?
 
 
 # Comparing Startup time & Memory footprint 

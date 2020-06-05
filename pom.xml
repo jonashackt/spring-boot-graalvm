@@ -94,7 +94,8 @@
 						<artifactId>native-image-maven-plugin</artifactId>
 						<version>20.1.0</version>
 						<configuration>
-							<buildArgs>--no-server -J-Xmx8G --no-fallback -H:+TraceClassInitialization -H:Name=${project.artifactId} -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
+							<buildArgs>--no-server -J-Xmx4G --no-fallback -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -H:ReflectionConfigurationFiles=../spring-graal-reflection.json -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
+							<imageName>${project.artifactId}</imageName>
 						</configuration>
 						<executions>
 							<execution>
