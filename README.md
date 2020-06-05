@@ -518,6 +518,70 @@ __Your Spring Boot App started in 0.083!!__ Simply access the App via http://loc
 
 
 
+# Doing all the steps together using the native-image-maven-plugin
+
+Currently it really makes sense to hand-craft a bash script like our [compile.sh](compile.sh) in order to be able to debug all those `native-image` options!
+
+But the development of GraalVM and the spring-graalvm-native projects really go fast. See [this post about GraalVM 20.1.0 release](https://medium.com/graalvm/graalvm-20-1-7ce7e89f066b) for example. So it makes also sense to have a look at the posibility to do all the needed steps to compile a Spring Boot app with GraalVM native images by only using the [native-image-maven-plugin](https://search.maven.org/search?q=g:org.graalvm.nativeimage%20AND%20a:native-image-maven-plugin).
+
+Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described in the spring-graalvm-native docs](https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html#_add_the_maven_plugin):
+
+```xml
+	<profiles>
+		<profile>
+			<id>native</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.nativeimage</groupId>
+						<artifactId>native-image-maven-plugin</artifactId>
+						<version>20.1.0</version>
+						<configuration>
+							<buildArgs>--no-server -J-Xmx4G --no-fallback -H:+TraceClassInitialization -H:Name=${project.artifactId} -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>native-image</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.springframework.boot</groupId>
+						<artifactId>spring-boot-maven-plugin</artifactId>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+```
+
+The `buildArgs` tag is crucial here! We need to configure everything needed to successfully run a `native-image` command for our Spring Boot app as already used inside our [compile.sh](compile.sh).
+
+But we can leave out `-cp $CP $MAINCLASS` parameter since they are already provided by the plugin. Remember now we run the `native-image` compilation from within the Maven pom context where all those is known.
+
+Using the `-H:Name=${project.artifactId}` is nevertheless a good idea in order to use our `artifactId` for the resulting executable image name. Otherwise we end up with a fully qualified class name like `io.jonashackt.springbootgraal.springboothelloapplication`.
+
+Just remember to have the `start-class` property in place:
+
+```
+<properties>
+		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
+        ...
+</properties>
+```
+
+That should already suffice! Now we can simply run our Maven profile with:
+
+```
+mvn -Pnative clean package
+```
+
+
+
+
 # Comparing Startup time & Memory footprint 
 
 Ok, the initial goal was to run our beloved Spring Boot Apps at lightning speed. Now we have a "normal" Spring Boot App, that we're able to run with:
