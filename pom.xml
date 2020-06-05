@@ -17,13 +17,14 @@
 	<properties>
 		<java.version>8</java.version>
 		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
+		<spring-graalvm-native.version>0.6.1.RELEASE</spring-graalvm-native.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.experimental</groupId>
 			<artifactId>spring-graal-native</artifactId>
-			<version>0.6.1.RELEASE</version>
+			<version>${spring-graalvm-native.version}</version>
 		</dependency>
 
 		<dependency>
