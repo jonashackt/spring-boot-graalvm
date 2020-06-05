@@ -29,8 +29,8 @@ jobs:
         # Check if Native Image was installed properly
         - native-image --version
 
-        # Run GraalVM Native Image compilation of Spring Boot App
-        - ./compile.sh
+        # Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
+        - mvn -Pnative clean package
 
       name: "Native Image compile on Travis Host"
 

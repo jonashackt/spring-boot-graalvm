@@ -39,6 +39,8 @@ This project is used as example in some articles:
   * [Set start-class element in pom.xml](#set-start-class-element-in-pomxml)
   * [Craft a compile.sh script](#craft-a-compilesh-script)
   * [Run the compile.sh script & start your native Spring Boot App](#run-the-compilesh-script--start-your-native-spring-boot-app)
+* [Doing all the steps together using the native-image-maven-plugin](#doing-all-the-steps-together-using-the-native-image-maven-plugin)
+  * [Tackling the 'No default constructor found Failed to instantiate java.lang.NoSuchMethodException: io.jonashackt.springbootgraal.SpringBootHelloApplication.()' error](#tackling-the-no-default-constructor-found-failed-to-instantiate-javalangnosuchmethodexception-iojonashacktspringbootgraalspringboothelloapplication-error)
 * [Comparing Startup time & Memory footprint](#comparing-startup-time--memory-footprint)
 * [Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI](#build-and-run-your-native-image-compilation-on-a-cloud-ci-provider-like-travisci)
   * [Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error](#prevent-the-javalangunsatisfiedlinkerror-no-netty_transport_native_epoll_x86_64-in-javalibrarypath-usrjavapackageslib-usrlib64-lib64-lib-usrlib-error)
@@ -697,11 +699,14 @@ io.jonashackt.springbootgraal.SpringBootHelloApplication=org.springframework.ste
 And using that dependency, our Maven build finally works as expected:
 
 ```
+$ mvn -Pnative clean package
+...
 Excluding 104 auto-configurations from spring.factories file
 Processing META-INF/spring.components files...
 Registered 3 entries
 Configuring initialization time for specific types and packages:
 #69 buildtime-init-classes   #21 buildtime-init-packages   #28 runtime-init-classes    #0 runtime-init-packages
+...
 ```
 
 __The question remains why the Spring @AutomaticFeature doesn't do that automatically only while executed via the `native-image-maven-plugin`!__
