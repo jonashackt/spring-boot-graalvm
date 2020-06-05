@@ -14,6 +14,13 @@ This example project shows how to compile a Webflux based Spring Boot applicatio
 
 [![asciicast](https://asciinema.org/a/313688.svg)](https://asciinema.org/a/313688)
 
+A live deployment is available on Heroku: https://spring-boot-graal.herokuapp.com/hello
+
+This project is used as example in some articles:
+
+* [blog.codecentric.de/en/2020/05/spring-boot-graalvm/](https://blog.codecentric.de/en/2020/05/spring-boot-graalvm/)
+* [blog.codecentric.de/en/2020/06/spring-boot-graalvm-docker-heroku/](https://blog.codecentric.de/en/2020/06/spring-boot-graalvm-docker-heroku/)
+
 
 ## Table of Contents 
 
@@ -436,7 +443,6 @@ echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
 time native-image \
   --no-server \
   --no-fallback \
-  --initialize-at-build-time \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
@@ -1252,7 +1258,6 @@ Using that option together like this in our `native-image` command:
 time native-image \
   --no-server -J-Xmx4G \
   --no-fallback \
-  --initialize-at-build-time \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \

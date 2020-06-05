@@ -48,7 +48,6 @@ echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
 time native-image \
   --no-server -J-Xmx4G \
   --no-fallback \
-  --initialize-at-build-time \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
