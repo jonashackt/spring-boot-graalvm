@@ -440,8 +440,6 @@ Now finally the GraalVM Native Image compilation is triggered with lot's of appr
 GRAALVM_VERSION=`native-image --version`
 echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
 time native-image \
-  --no-server \
-  --no-fallback \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
@@ -537,7 +535,7 @@ Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described i
 						<artifactId>native-image-maven-plugin</artifactId>
 						<version>20.1.0</version>
 						<configuration>
-							<buildArgs>--no-server -J-Xmx4G --no-fallback -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
+							<buildArgs>-J-Xmx4G -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
                             <imageName>${project.artifactId}</imageName>
 						</configuration>
 						<executions>
@@ -1281,8 +1279,7 @@ Using that option together like this in our `native-image` command:
 
 ```shell script
 time native-image \
-  --no-server -J-Xmx4G \
-  --no-fallback \
+  -J-Xmx4G \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
