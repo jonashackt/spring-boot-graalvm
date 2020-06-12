@@ -4,7 +4,7 @@
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 [![versionspringboot](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27parent%27%5D%2F%2A%5Blocal-name%28%29%3D%27version%27%5D&label=springboot)](https://github.com/spring-projects/spring-boot)
 [![versionspring-graalvm-native](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27properties%27%5D%2F%2A%5Blocal-name%28%29%3D%27spring-graalvm-native.version%27%5D&label=spring-graalvm-native)](https://github.com/spring-projects-experimental/spring-graalvm-native)
-[![versionjava](https://img.shields.io/badge/graalvm_ce-20.1.0-orange.svg?logo=java)](https://www.graalvm.org/)
+[![versionjava](https://img.shields.io/badge/graalvm_ce-20.1.0_JDK11-orange.svg?logo=java)](https://www.graalvm.org/)
 [![Deployed on Heroku](https://img.shields.io/badge/heroku-deployed-blueviolet.svg?logo=heroku&)](https://spring-boot-graal.herokuapp.com/hello)
 [![Pushed to Docker Hub](https://img.shields.io/badge/docker_hub-released-blue.svg?logo=docker)](https://hub.docker.com/r/jonashackt/spring-boot-graalvm)
 
@@ -91,9 +91,9 @@ GraalVM Native Image supports:
 
 ### Dynamic Graal Native Image configuration with @AutomaticFeature
 
-[Andy Clement](https://twitter.com/andy_clement) also seems to lead a Spring experimental project, that provides a Graal @AutomaticFeature for typical Spring application: https://github.com/spring-projects-experimental/spring-graal-native
+[Andy Clement](https://twitter.com/andy_clement) also seems to lead a Spring experimental project, that provides a Graal @AutomaticFeature for typical Spring application: https://github.com/spring-projects-experimental/spring-graalvm-native
 
-There are also already some example projects available: https://github.com/spring-projects-experimental/spring-graal-native/tree/master/spring-graal-native-samples 
+There are also already some example projects available: https://github.com/spring-projects-experimental/spring-graalvm-native/tree/master/spring-graalvm-native-samples 
 
 
 # Install GraalVM with SDKMAN
@@ -173,7 +173,7 @@ GraalVM Version 20.0.0 CE
 
 As famous [starbuxman](https://twitter.com/starbuxman) suggests, we start at: https://start.spring.io/!
 
-As https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support suggests, the GraalVM Native Image support becomes better every day - so [we should choose the newest Spring Boot `2.3` Milestone release](https://github.com/spring-projects-experimental/spring-graal-native) available:
+As https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support suggests, the GraalVM Native Image support becomes better every day - so [we should choose the newest Spring Boot `2.3` Milestone release](https://github.com/spring-projects-experimental/spring-graalvm-native) available:
 
 > Spring Boot 2.3.0.M1 (you may be able to get some things working with Boot 2.2.X but not 2.1 or earlier)
 
@@ -262,7 +262,7 @@ If you want to create another Spring Boot app I can recomment the great [Getting
 
 From https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support#experimental-support:
 
-> "The spring-graal-native experimental project, created by Andy Clement, shows how it is possible to run a Spring Boot application out of the box as a GraalVM native image. It could be used as a basis for a potential upcoming official support."
+> "The spring-graalvm-native experimental project, created by Andy Clement, shows how it is possible to run a Spring Boot application out of the box as a GraalVM native image. It could be used as a basis for a potential upcoming official support."
 
 So let's try this currently available implementation!
 
@@ -287,7 +287,7 @@ We could use the spring-context-indexer via importing it with Maven:
 
 This would produce a `META-INF/spring.components` file containing a list of all Spring Compontens, Entities and so on.
 
-__But we don't have to do this manually__, since the [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graal-native) (again, this is in experimental stage right now) does this automatically for us.
+__But we don't have to do this manually__, since the [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graalvm-native) (again, this is in experimental stage right now) does this automatically for us.
 
 The `@AutomaticFeature` will additionally chase down imported annotated classes like `@Import` - it knows, which kinds of annotations lead to reflection needs at runtime, which with GraalVM need to be registered at build time.
 
@@ -305,7 +305,7 @@ public class SpringBootHelloApplication {
 }
 ```
 
-The usage of [JDK Proxies is supported by GraalVM](https://github.com/oracle/graal/blob/master/substratevm/DYNAMIC_PROXY.md), they just need to be registered at build time. This is also taken care of by the [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graal-native).
+The usage of [JDK Proxies is supported by GraalVM](https://github.com/oracle/graal/blob/master/substratevm/DYNAMIC_PROXY.md), they just need to be registered at build time. This is also taken care of by the [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graalvm-native).
 
 
 ### Detect Autoconfiguration
@@ -319,7 +319,7 @@ The `@AutomaticFeature` again pulls the work from runtime to build time - and el
 
 ### Get Spring Graal @AutomaticFeature
 
-In order to compile our Spring Boot App as a Native Image, we need to have the latest [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graal-native) in place. As until March 2020 there was no Maven Dependency available, since this project is in a very early stage of development I guess. So I initially crafted a script `get-spring-feature.sh` that cloned and build the project for local usage.
+In order to compile our Spring Boot App as a Native Image, we need to have the latest [Spring Graal @AutomaticFeature](https://github.com/spring-projects-experimental/spring-graalvm-native) in place. As until March 2020 there was no Maven Dependency available, since this project is in a very early stage of development I guess. So I initially crafted a script `get-spring-feature.sh` that cloned and build the project for local usage.
 
 But the Spring guys are moving fast! As there was also [a spring.io post released by starbuxman](https://spring.io/blog/2020/04/16/spring-tips-the-graalvm-native-image-builder-feature) at 16th of April, I think he got [Andy Clement](https://twitter.com/andy_clement) and [Sébastien Deleuze](https://twitter.com/sdeleuze) to get him a Maven dependecy available on https://repo.spring.io/milestone :)
 
@@ -329,8 +329,8 @@ So there we go! Now we don't need to manually download and compile the @Automati
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.experimental</groupId>
-			<artifactId>spring-graal-native</artifactId>
-			<version>0.6.1.RELEASE</version>
+			<artifactId>spring-graalvm-native</artifactId>
+			<version>0.7.0</version>
 		</dependency>
     ...
 
@@ -374,7 +374,7 @@ Since after setting this class once in our `pom.xml`, we don't need to bother wi
 
 I'am pretty sure, that this step described here will not be necessary when Spring will officially release the Graal full support. But right now, we do need to do a little grunt work here.
 
-There are great examples of working compile scripts inside the [spring-graal-native-samples](https://github.com/spring-projects-experimental/spring-graal-native/tree/master/spring-graal-native-samples) project. So let's try to derive our own from that - just have a look into this project's [compile.sh](compile.sh):
+There are great examples of working compile scripts inside the [spring-graalvm-native-samples](https://github.com/spring-projects-experimental/spring-graalvm-native/tree/master/spring-graalvm-native-samples) project. So let's try to derive our own from that - just have a look into this project's [compile.sh](compile.sh):
 
 ```shell script
 #!/usr/bin/env bash
@@ -420,7 +420,7 @@ mvn -DskipTests package
 
 After the build, the Spring Boot fat jar needs to be expanded and the classpath needs to be set to the content of the results.
 
-Also the Spring Graal AutomaticFeature needs to be available on the classpath. Therefore we need the correct path to the `spring-graal-native-0.6.1.RELEASE.jar` file inside our `compile.sh` script:
+Also the Spring Graal AutomaticFeature needs to be available on the classpath. This is taken care by using the all the libraries found in `BOOT-INF/lib`, since by using the Maven dependency of `spring-graalvm-native` the automatic feature also resides there. 
 
 ```shell script
 echo "[-->] Expanding the Spring Boot fat jar"
@@ -440,8 +440,6 @@ Now finally the GraalVM Native Image compilation is triggered with lot's of appr
 GRAALVM_VERSION=`native-image --version`
 echo "[-->] Compiling Spring Boot App '$ARTIFACT' with $GRAALVM_VERSION"
 time native-image \
-  --no-server \
-  --no-fallback \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
@@ -524,7 +522,7 @@ But the development of GraalVM and the spring-graalvm-native projects really go 
 
 > For more information about the `native-image-maven-plugin` see this post: https://medium.com/graalvm/simplifying-native-image-generation-with-maven-plugin-and-embeddable-configuration-d5b283b92f57
 
-Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described in the spring-graalvm-native docs](https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html#_add_the_maven_plugin):
+Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described in the spring-graalvm-native docs](https://repo.spring.io/milestone/org/springframework/experimental/spring-graalvm-native-docs/0.7.0/spring-graalvm-native-docs-0.7.0.zip!/reference/index.html#_add_the_maven_plugin):
 
 ```xml
 	<profiles>
@@ -537,7 +535,7 @@ Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described i
 						<artifactId>native-image-maven-plugin</artifactId>
 						<version>20.1.0</version>
 						<configuration>
-							<buildArgs>--no-server -J-Xmx4G --no-fallback -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
+							<buildArgs>-J-Xmx4G -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
                             <imageName>${project.artifactId}</imageName>
 						</configuration>
 						<executions>
@@ -828,177 +826,7 @@ Second: __Don't use a `language: java` or the default linux distros like `dist: 
 
 Therefore we simply use the `language: minimal`, which is [a simple way of getting our Travis builds based on a basic Travis build environment without pre-installed JDKs or Maven](https://stackoverflow.com/a/44738181/4964553) together with `distro: bionic` which will tell Travis to use the latest available `minimal` build image (see https://docs.travis-ci.com/user/languages/minimal-and-generic/).
 
-
-### Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error
-
-I wasted some hours on this one! With a working configuration on my local dev machine, I couldn't get TravisCI to run my Native Image compilation successfully. I overlooked the following exception, that could also be found in this project's TravisCI build logs ([like this one](https://travis-ci.org/github/jonashackt/spring-boot-graalvm/builds/676166548)):
-
-```
-12:25:29.315 [ForkJoinPool-2-worker-3] DEBUG io.netty.util.internal.NativeLibraryLoader - Unable to load the library 'netty_transport_native_epoll_x86_64', trying other loading mechanism.
-java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]
-	at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2660)
-	at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:829)
-	at java.base/java.lang.System.loadLibrary(System.java:1871)
-	at io.netty.util.internal.NativeLibraryUtil.loadLibrary(NativeLibraryUtil.java:38)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
-	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:566)
-	at io.netty.util.internal.NativeLibraryLoader$1.run(NativeLibraryLoader.java:371)
-	at java.base/java.security.AccessController.doPrivileged(Native Method)
-	at io.netty.util.internal.NativeLibraryLoader.loadLibraryByHelper(NativeLibraryLoader.java:363)
-	at io.netty.util.internal.NativeLibraryLoader.loadLibrary(NativeLibraryLoader.java:341)
-	at io.netty.util.internal.NativeLibraryLoader.load(NativeLibraryLoader.java:136)
-	at io.netty.channel.epoll.Native.loadNativeLibrary(Native.java:231)
-	at io.netty.channel.epoll.Native.<clinit>(Native.java:58)
-	at io.netty.channel.epoll.Epoll.<clinit>(Epoll.java:39)
-	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
-	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1042)
-	at jdk.unsupported/sun.misc.Unsafe.ensureClassInitialized(Unsafe.java:698)
-	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.ensureClassInitialized(ConfigurableClassInitialization.java:167)
-	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.java:560)
-	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.java:130)
-	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.maybeInitializeHosted(ConfigurableClassInitialization.java:158)
-	at com.oracle.svm.hosted.SVMHost.registerType(SVMHost.java:198)
-	at com.oracle.graal.pointsto.meta.AnalysisUniverse.createType(AnalysisUniverse.java:264)
-	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookupAllowUnresolved(AnalysisUniverse.java:205)
-	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookup(AnalysisUniverse.java:182)
-	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookup(AnalysisUniverse.java:75)
-	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess$1.apply(UniverseMetaAccess.java:52)
-	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess$1.apply(UniverseMetaAccess.java:49)
-	at java.base/java.util.concurrent.ConcurrentHashMap.computeIfAbsent(ConcurrentHashMap.java:1705)
-	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess.lookupJavaType(UniverseMetaAccess.java:84)
-	at com.oracle.graal.pointsto.meta.AnalysisMetaAccess.lookupJavaType(AnalysisMetaAccess.java:47)
-	at com.oracle.graal.pointsto.meta.AnalysisMetaAccess.lookupJavaType(AnalysisMetaAccess.java:39)
-	at com.oracle.svm.hosted.snippets.ReflectionPlugins.processForName(ReflectionPlugins.java:164)
-	at com.oracle.svm.hosted.snippets.ReflectionPlugins.access$000(ReflectionPlugins.java:62)
-	at com.oracle.svm.hosted.snippets.ReflectionPlugins$1.apply(ReflectionPlugins.java:94)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.execute(InvocationPlugin.java:213)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.tryInvocationPlugin(BytecodeParser.java:2204)
-	at com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase$AnalysisBytecodeParser.tryInvocationPlugin(AnalysisGraphBuilderPhase.java:67)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.appendInvoke(BytecodeParser.java:1914)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.genInvokeStatic(BytecodeParser.java:1679)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.genInvokeStatic(BytecodeParser.java:1659)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.processBytecode(BytecodeParser.java:5288)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.iterateBytecodesForBlock(BytecodeParser.java:3397)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.processBlock(BytecodeParser.java:3204)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.build(BytecodeParser.java:1085)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.buildRootMethod(BytecodeParser.java:979)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.GraphBuilderPhase$Instance.run(GraphBuilderPhase.java:84)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.run(Phase.java:49)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.BasePhase.apply(BasePhase.java:197)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.apply(Phase.java:42)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.apply(Phase.java:38)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder.parse(MethodTypeFlowBuilder.java:221)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder.apply(MethodTypeFlowBuilder.java:340)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlow.doParse(MethodTypeFlow.java:310)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlow.ensureParsed(MethodTypeFlow.java:300)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlow.addContext(MethodTypeFlow.java:107)
-	at com.oracle.graal.pointsto.BigBang$1.run(BigBang.java:385)
-	at com.oracle.graal.pointsto.util.CompletionExecutor.lambda$execute$0(CompletionExecutor.java:171)
-	at java.base/java.util.concurrent.ForkJoinTask$RunnableExecuteAction.exec(ForkJoinTask.java:1426)
-	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:290)
-	at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1020)
-	at java.base/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1656)
-	at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1594)
-	at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:177)
-12:25:29.321 [ForkJoinPool-2-worker-3] DEBUG io.netty.util.internal.NativeLibraryLoader - netty_transport_native_epoll_x86_64 cannot be loaded from java.library.path, now trying export to -Dio.netty.native.workdir: /tmp
-java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]
-	at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2660)
-	at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:829)
-	at java.base/java.lang.System.loadLibrary(System.java:1871)
-	at io.netty.util.internal.NativeLibraryUtil.loadLibrary(NativeLibraryUtil.java:38)
-	at io.netty.util.internal.NativeLibraryLoader.loadLibrary(NativeLibraryLoader.java:351)
-	at io.netty.util.internal.NativeLibraryLoader.load(NativeLibraryLoader.java:136)
-	at io.netty.channel.epoll.Native.loadNativeLibrary(Native.java:231)
-	at io.netty.channel.epoll.Native.<clinit>(Native.java:58)
-	at io.netty.channel.epoll.Epoll.<clinit>(Epoll.java:39)
-	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
-	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1042)
-	at jdk.unsupported/sun.misc.Unsafe.ensureClassInitialized(Unsafe.java:698)
-	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.ensureClassInitialized(ConfigurableClassInitialization.java:167)
-	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.java:560)
-	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.java:130)
-	at com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization.maybeInitializeHosted(ConfigurableClassInitialization.java:158)
-	at com.oracle.svm.hosted.SVMHost.registerType(SVMHost.java:198)
-	at com.oracle.graal.pointsto.meta.AnalysisUniverse.createType(AnalysisUniverse.java:264)
-	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookupAllowUnresolved(AnalysisUniverse.java:205)
-	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookup(AnalysisUniverse.java:182)
-	at com.oracle.graal.pointsto.meta.AnalysisUniverse.lookup(AnalysisUniverse.java:75)
-	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess$1.apply(UniverseMetaAccess.java:52)
-	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess$1.apply(UniverseMetaAccess.java:49)
-	at java.base/java.util.concurrent.ConcurrentHashMap.computeIfAbsent(ConcurrentHashMap.java:1705)
-	at com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess.lookupJavaType(UniverseMetaAccess.java:84)
-	at com.oracle.graal.pointsto.meta.AnalysisMetaAccess.lookupJavaType(AnalysisMetaAccess.java:47)
-	at com.oracle.graal.pointsto.meta.AnalysisMetaAccess.lookupJavaType(AnalysisMetaAccess.java:39)
-	at com.oracle.svm.hosted.snippets.ReflectionPlugins.processForName(ReflectionPlugins.java:164)
-	at com.oracle.svm.hosted.snippets.ReflectionPlugins.access$000(ReflectionPlugins.java:62)
-	at com.oracle.svm.hosted.snippets.ReflectionPlugins$1.apply(ReflectionPlugins.java:94)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.execute(InvocationPlugin.java:213)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.tryInvocationPlugin(BytecodeParser.java:2204)
-	at com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase$AnalysisBytecodeParser.tryInvocationPlugin(AnalysisGraphBuilderPhase.java:67)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.appendInvoke(BytecodeParser.java:1914)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.genInvokeStatic(BytecodeParser.java:1679)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.genInvokeStatic(BytecodeParser.java:1659)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.processBytecode(BytecodeParser.java:5288)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.iterateBytecodesForBlock(BytecodeParser.java:3397)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.processBlock(BytecodeParser.java:3204)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.build(BytecodeParser.java:1085)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.BytecodeParser.buildRootMethod(BytecodeParser.java:979)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.java.GraphBuilderPhase$Instance.run(GraphBuilderPhase.java:84)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.run(Phase.java:49)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.BasePhase.apply(BasePhase.java:197)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.apply(Phase.java:42)
-	at jdk.internal.vm.compiler/org.graalvm.compiler.phases.Phase.apply(Phase.java:38)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder.parse(MethodTypeFlowBuilder.java:221)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder.apply(MethodTypeFlowBuilder.java:340)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlow.doParse(MethodTypeFlow.java:310)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlow.ensureParsed(MethodTypeFlow.java:300)
-	at com.oracle.graal.pointsto.flow.MethodTypeFlow.addContext(MethodTypeFlow.java:107)
-	at com.oracle.graal.pointsto.BigBang$1.run(BigBang.java:385)
-	at com.oracle.graal.pointsto.util.CompletionExecutor.lambda$execute$0(CompletionExecutor.java:171)
-	at java.base/java.util.concurrent.ForkJoinTask$RunnableExecuteAction.exec(ForkJoinTask.java:1426)
-	at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:290)
-	at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1020)
-	at java.base/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1656)
-	at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1594)
-	at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:177)
-	Suppressed: java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]
-		at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2660)
-		at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:829)
-		at java.base/java.lang.System.loadLibrary(System.java:1871)
-		at io.netty.util.internal.NativeLibraryUtil.loadLibrary(NativeLibraryUtil.java:38)
-		at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-		at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
-		at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-		at java.base/java.lang.reflect.Method.invoke(Method.java:566)
-		at io.netty.util.internal.NativeLibraryLoader$1.run(NativeLibraryLoader.java:371)
-		at java.base/java.security.AccessController.doPrivileged(Native Method)
-		at io.netty.util.internal.NativeLibraryLoader.loadLibraryByHelper(NativeLibraryLoader.java:363)
-		at io.netty.util.internal.NativeLibraryLoader.loadLibrary(NativeLibraryLoader.java:341)
-		... 54 common frames omitted
-```
-
-After playing around with parameters of the `native-image` command with no luck at all, I finally found a configuration inside the [spring-graal-native-samples/function-netty](https://github.com/spring-projects-experimental/spring-graal-native/tree/master/spring-graal-native-samples/function-netty) example project's [pom.xml](https://github.com/spring-projects-experimental/spring-graal-native/blob/master/spring-graal-native-samples/function-netty/pom.xml):
-
-```xml
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-webflux</artifactId>
-        <exclusions>
-            <exclusion>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-transport-native-epoll</artifactId>
-            </exclusion>
-            <exclusion>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-codec-http2</artifactId>
-            </exclusion>
-        </exclusions>
-    </dependency>
-```
-
-Both `netty-transport-native-epoll` and `netty-codec-http2` were excluded from the `spring-boot-starter-webflux` dependency - and with that inside my project's pom.xml, the Travis build __went much further!__ It really [seemed to do the compilation](https://travis-ci.org/github/jonashackt/spring-boot-graalvm):
+Now our TravisCI builds should run a full native image compilation:
 
 ```
 Warning: class initialization of class io.netty.handler.ssl.JettyNpnSslEngine failed with exception java.lang.NoClassDefFoundError: org/eclipse/jetty/npn/NextProtoNego$Provider. This class will be initialized at run time because option --allow-incomplete-classpath is used for image building. Use the option --initialize-at-run-time=io.netty.handler.ssl.JettyNpnSslEngine to explicitly request delayed initialization of this class.
@@ -1014,9 +842,9 @@ Warning: class initialization of class io.netty.handler.ssl.JettyNpnSslEngine fa
 [spring-boot-graal:5634]      compile: 133,862.12 ms,  6.23 GB
 [spring-boot-graal:5634]        image:   8,635.21 ms,  6.23 GB
 [spring-boot-graal:5634]        write:   1,472.98 ms,  6.23 GB
-```
-
-Now our TravisCI builds should run a full native image compilation - see this build for example!
+``` 
+ 
+See this build for example:
 
 ![successfull-travis-compile](screenshots/successfull-travis-compile.png)
 
@@ -1437,13 +1265,13 @@ jobs:
 
 ### Tackling 'Error: Image build request failed with exit status 137' with the -J-Xmx parameter
 
-[As mentioned in the Spring docs](https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html#_options_recommended_by_default), we should use the `--no-server` option when running Native Image compilations with Spring for now.
+[As mentioned in the Spring docs](https://repo.spring.io/milestone/org/springframework/experimental/spring-graalvm-native-docs/0.7.0/spring-graalvm-native-docs-0.7.0.zip!/reference/index.html#_options_enabled_by_default), the `spring-graalvm-native` uses the `--no-server` option by default when running Native Image compilations with Spring.
 
 But why is this parameter used? See the official docs: https://www.graalvm.org/docs/reference-manual/native-image/
 
 > Another prerequisite to consider is the maximum heap size. Physical memory for running a JVM-based application may be insufficient to build a native image. For server-based image building we allow to use 80% of the reported physical RAM for all servers together, but never more than 14GB per server (for exact details please consult the native-image source code). If you run with --no-server option, you will get the whole 80% of what is reported as physical RAM as the baseline. This mode respects -Xmx arguments additionally.
 
-We could leave out the `no-server` option in order to reduce the amount of memory our Native Image compilation consumes - but there's an open issue in combination with Spring: https://github.com/oracle/graal/issues/1952 which says, that the images build without `--no-server` is sometimes unreliable.
+We somehow could leave out the `no-server` option in order to reduce the amount of memory our Native Image compilation consumes - but there's an open issue in combination with Spring: https://github.com/oracle/graal/issues/1952 which says, that the images build without `--no-server` is sometimes unreliable.
 
 Luckily there's [a hint in this GitHub issue](https://github.com/oracle/graal/issues/920), that we could configure the amount of memory the `--no-server` option takes in total with the help of a `Xmx` parameter like `-J-Xmx3G`.
 
@@ -1451,8 +1279,7 @@ Using that option together like this in our `native-image` command:
 
 ```shell script
 time native-image \
-  --no-server -J-Xmx4G \
-  --no-fallback \
+  -J-Xmx4G \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
@@ -1670,40 +1497,50 @@ This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app lo
 
 # Links
 
+### Spring / Pivotal
+
+Current docs: https://repo.spring.io/milestone/org/springframework/experimental/spring-graalvm-native-docs/0.7.0/spring-graalvm-native-docs-0.7.0.zip!/reference/index.html
+
 https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support
 
 https://www.infoq.com/presentations/spring-boot-graalvm/
 
 https://github.com/spring-projects/spring-framework/issues/21529
 
+https://spring.io/blog/2020/04/09/spring-graal-native-0-6-0-released
+
+https://spring.io/blog/2020/04/16/spring-tips-the-graalvm-native-image-builder-feature
+
+https://spring.io/blog/2020/06/10/the-path-towards-spring-boot-native-applications
+
+
+### Stackoverflow
+
 https://stackoverflow.com/questions/50911552/graalvm-and-spring-applications
 
-https://blog.softwaremill.com/graalvm-installation-and-setup-on-macos-294dd1d23ca2
+https://stackoverflow.com/questions/58465833/graalvm-with-native-image-compilation-in-travis-ci
 
-https://hub.docker.com/r/springci/graalvm-ce-java8
+https://stackoverflow.com/questions/61302412/how-to-configure-the-port-of-a-spring-boot-app-thats-natively-compiled-by-graal
+
+
+### GraalVM & Oracle
+
+https://blog.softwaremill.com/graalvm-installation-and-setup-on-macos-294dd1d23ca2
 
 https://hub.docker.com/r/oracle/graalvm-ce/
 
 https://www.graalvm.org/docs/reference-manual/native-image/
 
-https://stackoverflow.com/questions/58465833/graalvm-with-native-image-compilation-in-travis-ci
-
-https://spring.io/blog/2020/04/09/spring-graal-native-0-6-0-released
-
-https://spring.io/blog/2020/04/16/spring-tips-the-graalvm-native-image-builder-feature
-
-https://github.com/spring-projects-experimental/spring-graal-native#install-graalvm-native
-
-Current docs: https://repo.spring.io/milestone/org/springframework/experimental/spring-graal-native-docs/0.6.1.RELEASE/spring-graal-native-docs-0.6.1.RELEASE.zip!/reference/index.html
+https://medium.com/graalvm/graalvm-20-1-7ce7e89f066b
 
 https://medium.com/graalvm/updates-on-class-initialization-in-graalvm-native-image-generation-c61faca461f7
 
-https://e.printstacktrace.blog/building-java-and-maven-docker-images-using-parallelized-jenkins-pipeline-and-sdkman/
 
-https://stackoverflow.com/questions/61302412/how-to-configure-the-port-of-a-spring-boot-app-thats-natively-compiled-by-graal
+### Others
+
+https://e.printstacktrace.blog/building-java-and-maven-docker-images-using-parallelized-jenkins-pipeline-and-sdkman/
 
 https://medium.com/analytics-vidhya/maybe-native-executable-in-quarkus-is-not-for-you-but-it-is-awesome-967588e80a4
 
 https://quarkus.io/guides/building-native-image
 
-https://medium.com/graalvm/graalvm-20-1-7ce7e89f066b
