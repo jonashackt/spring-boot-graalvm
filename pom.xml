@@ -17,7 +17,7 @@
 	<properties>
 		<java.version>8</java.version>
 		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
-		<spring-graalvm-native.version>0.7.0</spring-graalvm-native.version>
+		<spring-graalvm-native.version>0.7.1</spring-graalvm-native.version>
 	</properties>
 
 	<dependencies>
