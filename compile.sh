@@ -48,6 +48,6 @@ time native-image \
   -H:+TraceClassInitialization \
   -H:Name=$ARTIFACT \
   -H:+ReportExceptionStackTraces \
-  -Dspring.graal.remove-unused-autoconfig=true \
-  -Dspring.graal.remove-yaml-support=true \
+  -Dspring.native.remove-unused-autoconfig=true \
+  -Dspring.native.remove-yaml-support=true \
   -cp $CP $MAINCLASS;
