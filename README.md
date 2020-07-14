@@ -119,9 +119,12 @@ Available Java Versions
                |     | 14.0.0.hs    | adpt    |            | 14.0.0.hs-adpt
                |     | 13.0.2.j9    | adpt    |            | 13.0.2.j9-adpt
 ... 
- GraalVM       |     | 20.0.0.r11   | grl     |            | 20.0.0.r11-grl
+ GraalVM       |     | 20.1.0.r11   | grl     |            | 20.1.0.r11-grl
+               |     | 20.1.0.r8    | grl     |            | 20.1.0.r8-grl
+               |     | 20.0.0.r11   | grl     |            | 20.0.0.r11-grl
                |     | 20.0.0.r8    | grl     |            | 20.0.0.r8-grl
                |     | 19.3.1.r11   | grl     |            | 19.3.1.r11-grl
+               |     | 19.3.1.r8    | grl     |            | 19.3.1.r8-grl
 ...
 ```
 
@@ -130,16 +133,16 @@ The list itself is much longer and you could see the wonderful simplicity of thi
 Now to install GraalVM based on JDK11, simply run:
 
 ```
-sdk install java 20.0.0.r11-grl
+sdk install java 20.1.0.r11-grl
 ``` 
 
 SDKMAN now installs GraalVM for us. To have the correct `PATH` configuration in place, you may need to restart your console. If everything went fine, you should see `java -version` react like this:
 
 ```
 $ java -version
-openjdk version "11.0.6" 2020-01-14
-OpenJDK Runtime Environment GraalVM CE 20.0.0 (build 11.0.6+9-jvmci-20.0-b02)
-OpenJDK 64-Bit Server VM GraalVM CE 20.0.0 (build 11.0.6+9-jvmci-20.0-b02, mixed mode, sharing)
+openjdk version "11.0.7" 2020-04-14
+OpenJDK Runtime Environment GraalVM CE 20.1.0 (build 11.0.7+10-jvmci-20.1-b02)
+OpenJDK 64-Bit Server VM GraalVM CE 20.1.0 (build 11.0.7+10-jvmci-20.1-b02, mixed mode, sharing)
 ```
 
 
@@ -152,7 +155,7 @@ GraalVM brings a special tool `gu` - the GraalVM updater. To list everything tha
 $ gu list
 ComponentId              Version             Component name      Origin
 --------------------------------------------------------------------------------
-graalvm                  20.0.0              GraalVM Core
+graalvm                  20.1.0              GraalVM Core
 ```
 
 Now to install GraalVM Native image, simply run:
@@ -165,7 +168,7 @@ After that, the `native-image` command should work for you:
 
 ```
 $ native-image --version
-GraalVM Version 20.0.0 CE
+GraalVM Version 20.1.0 (Java Version 11.0.7)
 ```
 
 
@@ -330,7 +333,7 @@ So there we go! Now we don't need to manually download and compile the @Automati
 		<dependency>
 			<groupId>org.springframework.experimental</groupId>
 			<artifactId>spring-graalvm-native</artifactId>
-			<version>0.7.0</version>
+			<version>0.7.1</version>
 		</dependency>
     ...
 
@@ -393,7 +396,7 @@ VERSION=$(mvn -q \
   -Dexec.args='${project.version}' \
   --non-recursive \
   exec:exec);
-echo "artifact version is $VERSION"
+echo "artifact version is '$VERSION'"
 
 echo "[-->] Detect Spring Boot Main class ('start-class') from pom.xml"
 MAINCLASS=$(mvn -q \
@@ -401,7 +404,7 @@ MAINCLASS=$(mvn -q \
 -Dexec.args='${start-class}' \
 --non-recursive \
 exec:exec);
-echo "Spring Boot Main class ('start-class') is 'MAINCLASS'"
+echo "Spring Boot Main class ('start-class') is '$MAINCLASS'"
 ```
 
 The first part of the script is dedicated to define needed variables for later GraalVM Native Image compilation. The variables `ARTIFACT`, `VERSION` and `MAINCLASS` could be simply derived from our [pom.xml](pom.xml) with [the help of the Maven exec plugin](https://stackoverflow.com/a/26514030/4964553).
@@ -536,7 +539,7 @@ Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described i
 						<version>20.1.0</version>
 						<configuration>
 							<buildArgs>-J-Xmx4G -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
-                            <imageName>${project.artifactId}</imageName>
+							<imageName>${project.artifactId}</imageName>
 						</configuration>
 						<executions>
 							<execution>
@@ -798,7 +801,7 @@ install:
   # Install GraalVM with SDKMAN
   - curl -s "https://get.sdkman.io" | bash
   - source "$HOME/.sdkman/bin/sdkman-init.sh"
-  - sdk install java 20.0.0.r11-grl
+  - sdk install java 20.1.0.r11-grl
 
   # Check if GraalVM was installed successfully
   - java -version
@@ -973,7 +976,7 @@ In order to enable the `mvn` command for a user of our Docker image, we craft a 
 Now let's build our Image with:
 
 ```shell script
-docker build . --tag=graalvm-ce:20.0.0-java11-mvn-native-image
+docker build . --tag=graalvm-ce:20.1.0-java11-mvn-native-image
 ```
 
 Now we should be able to launch our GraalVM Native Image compilation inside official Oracle GraalVM image with:
@@ -983,7 +986,7 @@ docker run -it --rm \
     --volume $(pwd):/build \
     --workdir /build \
     --volume "$HOME"/.m2:/root/.m2 \
-    graalvm-ce:20.0.0-java11-mvn-native-image ./compile.sh
+    graalvm-ce:20.1.0-java11-mvn-native-image ./compile.sh
 ```
 
 When I first thought about a Docker usage, I wanted to pack this build into a `Dockerfile` also - but then I realized, that there's [no easy way of using Docker volumes at Docker build time](https://stackoverflow.com/questions/51086724/docker-build-using-volumes-at-build-time). But I really wanted to mount a Docker volume to my local Maven repository like `--volume "$HOME"/.m2:/root/.m2` to prevent the download of all the Spring Maven dependencies over and over again every time we start our Docker container.
@@ -1235,7 +1238,7 @@ jobs:
         # Install GraalVM with SDKMAN
         - curl -s "https://get.sdkman.io" | bash
         - source "$HOME/.sdkman/bin/sdkman-init.sh"
-        - sdk install java 20.0.0.r11-grl
+        - sdk install java 20.1.0.r11-grl
 
         # Check if GraalVM was installed successfully
         - java -version
