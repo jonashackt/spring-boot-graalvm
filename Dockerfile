@@ -1,6 +1,6 @@
 # Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
 # https://hub.docker.com/r/oracle/graalvm-ce image
-FROM oracle/graalvm-ce:20.1.0-java11
+FROM oracle/graalvm-ce:20.2.0-java11
 
 ADD . /build
 WORKDIR /build
