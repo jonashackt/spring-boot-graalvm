@@ -4,7 +4,7 @@
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 [![versionspringboot](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27parent%27%5D%2F%2A%5Blocal-name%28%29%3D%27version%27%5D&label=springboot)](https://github.com/spring-projects/spring-boot)
 [![versionspring-graalvm-native](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27properties%27%5D%2F%2A%5Blocal-name%28%29%3D%27spring-graalvm-native.version%27%5D&label=spring-graalvm-native)](https://github.com/spring-projects-experimental/spring-graalvm-native)
-[![versionjava](https://img.shields.io/badge/graalvm_ce-20.1.0_JDK11-orange.svg?logo=java)](https://www.graalvm.org/)
+[![versionjava](https://img.shields.io/badge/graalvm_ce-20.2.0_JDK11-orange.svg?logo=java)](https://www.graalvm.org/)
 [![Deployed on Heroku](https://img.shields.io/badge/heroku-deployed-blueviolet.svg?logo=heroku&)](https://spring-boot-graal.herokuapp.com/hello)
 [![Pushed to Docker Hub](https://img.shields.io/badge/docker_hub-released-blue.svg?logo=docker)](https://hub.docker.com/r/jonashackt/spring-boot-graalvm)
 
@@ -119,7 +119,9 @@ Available Java Versions
                |     | 14.0.0.hs    | adpt    |            | 14.0.0.hs-adpt
                |     | 13.0.2.j9    | adpt    |            | 13.0.2.j9-adpt
 ... 
- GraalVM       |     | 20.1.0.r11   | grl     |            | 20.1.0.r11-grl
+ GraalVM       | >>> | 20.2.0.r11   | grl     | installed  | 20.2.0.r11-grl
+               |     | 20.2.0.r8    | grl     |            | 20.2.0.r8-grl
+               |     | 20.1.0.r11   | grl     |            | 20.1.0.r11-grl
                |     | 20.1.0.r8    | grl     |            | 20.1.0.r8-grl
                |     | 20.0.0.r11   | grl     |            | 20.0.0.r11-grl
                |     | 20.0.0.r8    | grl     |            | 20.0.0.r8-grl
@@ -133,16 +135,16 @@ The list itself is much longer and you could see the wonderful simplicity of thi
 Now to install GraalVM based on JDK11, simply run:
 
 ```
-sdk install java 20.1.0.r11-grl
+sdk install java 20.2.0.r11-grl
 ``` 
 
 SDKMAN now installs GraalVM for us. To have the correct `PATH` configuration in place, you may need to restart your console. If everything went fine, you should see `java -version` react like this:
 
 ```
 $ java -version
-openjdk version "11.0.7" 2020-04-14
-OpenJDK Runtime Environment GraalVM CE 20.1.0 (build 11.0.7+10-jvmci-20.1-b02)
-OpenJDK 64-Bit Server VM GraalVM CE 20.1.0 (build 11.0.7+10-jvmci-20.1-b02, mixed mode, sharing)
+openjdk version "11.0.8" 2020-07-14
+OpenJDK Runtime Environment GraalVM CE 20.2.0 (build 11.0.8+10-jvmci-20.2-b03)
+OpenJDK 64-Bit Server VM GraalVM CE 20.2.0 (build 11.0.8+10-jvmci-20.2-b03, mixed mode, sharing)
 ```
 
 
@@ -155,7 +157,7 @@ GraalVM brings a special tool `gu` - the GraalVM updater. To list everything tha
 $ gu list
 ComponentId              Version             Component name      Origin
 --------------------------------------------------------------------------------
-graalvm                  20.1.0              GraalVM Core
+graalvm                  20.2.0              GraalVM Core
 ```
 
 Now to install GraalVM Native image, simply run:
@@ -168,7 +170,7 @@ After that, the `native-image` command should work for you:
 
 ```
 $ native-image --version
-GraalVM Version 20.1.0 (Java Version 11.0.7)
+GraalVM Version 20.2.0 (Java Version 11.0.8)
 ```
 
 
@@ -536,7 +538,7 @@ Therefor let's add a new Maven profile to our [pom.xml](pom.xml) as [described i
 					<plugin>
 						<groupId>org.graalvm.nativeimage</groupId>
 						<artifactId>native-image-maven-plugin</artifactId>
-						<version>20.1.0</version>
+						<version>20.2.0</version>
 						<configuration>
 							<buildArgs>-J-Xmx4G -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.graal.remove-unused-autoconfig=true -Dspring.graal.remove-yaml-support=true</buildArgs>
 							<imageName>${project.artifactId}</imageName>
@@ -801,7 +803,7 @@ install:
   # Install GraalVM with SDKMAN
   - curl -s "https://get.sdkman.io" | bash
   - source "$HOME/.sdkman/bin/sdkman-init.sh"
-  - sdk install java 20.1.0.r11-grl
+  - sdk install java 20.2.0.r11-grl
 
   # Check if GraalVM was installed successfully
   - java -version
@@ -950,7 +952,7 @@ But we can help ourselves - we just craft a simple [Dockerfile](Dockerfile) for 
 ```dockerfile
 # Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
 # https://hub.docker.com/r/oracle/graalvm-ce image
-FROM oracle/graalvm-ce:20.1.0-java11
+FROM oracle/graalvm-ce:20.2.0-java11
 
 # For SDKMAN to work we need unzip & zip
 RUN yum install -y unzip zip
@@ -976,7 +978,7 @@ In order to enable the `mvn` command for a user of our Docker image, we craft a 
 Now let's build our Image with:
 
 ```shell script
-docker build . --tag=graalvm-ce:20.1.0-java11-mvn-native-image
+docker build . --tag=graalvm-ce:20.2.0-java11-mvn-native-image
 ```
 
 Now we should be able to launch our GraalVM Native Image compilation inside official Oracle GraalVM image with:
@@ -986,7 +988,7 @@ docker run -it --rm \
     --volume $(pwd):/build \
     --workdir /build \
     --volume "$HOME"/.m2:/root/.m2 \
-    graalvm-ce:20.1.0-java11-mvn-native-image ./compile.sh
+    graalvm-ce:20.2.0-java11-mvn-native-image ./compile.sh
 ```
 
 When I first thought about a Docker usage, I wanted to pack this build into a `Dockerfile` also - but then I realized, that there's [no easy way of using Docker volumes at Docker build time](https://stackoverflow.com/questions/51086724/docker-build-using-volumes-at-build-time). But I really wanted to mount a Docker volume to my local Maven repository like `--volume "$HOME"/.m2:/root/.m2` to prevent the download of all the Spring Maven dependencies over and over again every time we start our Docker container.
@@ -1024,7 +1026,7 @@ Therefore let's refactor our Dockerfile:
 ```dockerfile
 # Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
 # https://hub.docker.com/r/oracle/graalvm-ce image
-FROM oracle/graalvm-ce:20.1.0-java11
+FROM oracle/graalvm-ce:20.2.0-java11
 
 ADD . /build
 WORKDIR /build
@@ -1094,7 +1096,7 @@ user	16m32.096s
 sys	1m34.441s
 Removing intermediate container 151e1413ec2f
  ---> be671d4f237f
-Step 10/13 : FROM oracle/graalvm-ce:20.1.0-java11
+Step 10/13 : FROM oracle/graalvm-ce:20.2.0-java11
  ---> 364d0bb387bd
 Step 11/13 : MAINTAINER Jonas Hecht
  ---> Using cache
@@ -1238,7 +1240,7 @@ jobs:
         # Install GraalVM with SDKMAN
         - curl -s "https://get.sdkman.io" | bash
         - source "$HOME/.sdkman/bin/sdkman-init.sh"
-        - sdk install java 20.1.0.r11-grl
+        - sdk install java 20.2.0.r11-grl
 
         # Check if GraalVM was installed successfully
         - java -version
