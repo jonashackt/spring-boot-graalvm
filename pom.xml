@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.3.3.RELEASE</version>
+		<version>2.4.0-M2</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>io.jonashackt</groupId>
@@ -18,6 +18,7 @@
 		<java.version>8</java.version>
 		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
 		<spring-graalvm-native.version>0.8.0</spring-graalvm-native.version>
+		<native-image-maven-plugin.version>20.2.0</native-image-maven-plugin.version>
 	</properties>
 
 	<dependencies>
@@ -87,7 +88,7 @@
 					<plugin>
 						<groupId>org.graalvm.nativeimage</groupId>
 						<artifactId>native-image-maven-plugin</artifactId>
-						<version>20.2.0</version>
+						<version>${native-image-maven-plugin.version}</version>
 						<configuration>
 							<buildArgs>-J-Xmx4G -H:+TraceClassInitialization -H:+ReportExceptionStackTraces -Dspring.native.remove-unused-autoconfig=true -Dspring.native.remove-yaml-support=true</buildArgs>
 							<imageName>${project.artifactId}</imageName>
