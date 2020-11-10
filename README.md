@@ -21,7 +21,9 @@ This project is used as example in some articles:
 
 * [blog.codecentric.de/en/2020/05/spring-boot-graalvm/](https://blog.codecentric.de/en/2020/05/spring-boot-graalvm/)
 * [blog.codecentric.de/en/2020/06/spring-boot-graalvm-docker-heroku/](https://blog.codecentric.de/en/2020/06/spring-boot-graalvm-docker-heroku/)
+* [blog.codecentric.de/en/2020/06/spring-boot-graalvm-native-image-maven-plugin/](https://blog.codecentric.de/en/2020/06/spring-boot-graalvm-native-image-maven-plugin/)
 
+[![javamagazin-092020-cover-small](screenshots/javamagazin-092020-cover-small.jpg)](https://public.centerdevice.de/41c5481e-5782-4c0e-bf7b-a62ec68d3854)
 
 ## Table of Contents 
 
