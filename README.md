@@ -47,6 +47,7 @@ This project is used as example in some articles:
 * [Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI](#build-and-run-your-native-image-compilation-on-a-cloud-ci-provider-like-travisci)
   * [Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error](#prevent-the-javalangunsatisfiedlinkerror-no-netty_transport_native_epoll_x86_64-in-javalibrarypath-usrjavapackageslib-usrlib64-lib64-lib-usrlib-error)
   * [Tackling the 'There was an error linking the native image /usr/bin/ld: final link failed: Memory exhausted' error](#tackling-the-there-was-an-error-linking-the-native-image-usrbinld-final-link-failed-memory-exhausted-error)
+* [Build and Run your Native Image compilation on GitHub Actions](#build-and-run-your-native-image-compilation-on-github-actions)
 * [Use Docker to compile a Spring Boot App with GraalVM](#use-docker-to-compile-a-spring-boot-app-with-graalvm)
   * [Tackling 'Exception java.lang.OutOfMemoryError in thread "native-image pid watcher"' error](#tackling-exception-javalangoutofmemoryerror-in-thread-native-image-pid-watcher-error)
   * [Run Spring Boot Native Apps in Docker](#run-spring-boot-native-apps-in-docker)
@@ -944,6 +945,61 @@ user	17m46.032s
 sys	0m11.720s
 ```
 
+# Build and Run your Native Image compilation on GitHub Actions
+
+Since Travis laid down their OpenSource support to a massive degree, many maintainers move their repos over to GitHub Actions - see also this post: https://blog.codecentric.de/en/2021/02/github-actions-pipeline/
+
+So let's implement a [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml):
+
+```yaml
+name: native-image-compile
+
+on: [push]
+
+jobs:
+  native-image-compile-on-host:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Cache SDKMAN archives & candidates
+      uses: actions/cache@v2
+      with:
+        path: ~/.sdkman
+        key: ${{ runner.os }}-sdkman-${{ hashFiles('pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-sdkman-
+
+    - name: Install GraalVM, Maven, Native Image & Run Maven build
+      run: |
+        echo 'Install GraalVM with SDKMAN'
+        curl -s "https://get.sdkman.io" | bash
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install java 20.2.0.r11-grl
+
+        echo 'Check if GraalVM was installed successfully'
+        java -version
+
+        echo 'Install GraalVM Native Image'
+        gu install native-image
+
+        echo 'Check if Native Image was installed properly'
+        native-image --version
+
+        echo 'Install Maven, that uses GraalVM for later builds'
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install maven
+
+        echo 'Show Maven using GraalVM JDK'
+        mvn --version
+
+        echo 'Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)'
+        mvn -B clean package -P native --no-transfer-progress
+```
+
+This one does exactly what we did with TravisCI - building the native image using Maven and installing GraalVM beforehand.
+
 
 # Use Docker to compile a Spring Boot App with GraalVM
 
@@ -1322,6 +1378,20 @@ sys	2m3.179s
 The one thing to take into account is that Native Image compilation will be a bit slower now. So if you run on your local machine with lot's of memory, feel free to delete the ` -J-Xmx4G` parameter :)
 
 
+### Work around the Heroku 512MB RAM cap: Building our Dockerimage with GitHub Actions
+
+```yaml
+  native-image-compile-in-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Compile Native Image using Docker
+        run: docker build . --tag=registry.heroku.com/spring-boot-graal/web
+```
+
+
 ### Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure
 
 Now we should be able to finally [push the build Docker image into Heroku's Container Registry](https://devcenter.heroku.com/articles/container-registry-and-runtime#using-a-ci-cd-platform), from where we're able to run our Spring Boot Native app later on.
@@ -1449,9 +1519,45 @@ $ heroku logs -a spring-boot-graal
 ```
 
 
+### Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure using GitHub Actions
+
+We should also use GitHub Actions to [push the build Docker image into Heroku's Container Registry](https://devcenter.heroku.com/articles/container-registry-and-runtime#using-a-ci-cd-platform).
+
+Therefore we need to configure encrypted variables in our GitHub repository in order to push to Heroku's Container Registry:
+`DOCKER_USERNAME` and `DOCKER_PASSWORD`. The first is your Heroku eMail, the latter is your Heroku API key. Be sure to prevent displaying the values in the build log:
+
+With the following configuration inside our [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml), we should be able to successfully log in to Heroku Container Registry:
+
+```yaml
+        run: |
+          echo ' Login into Heroku Container Registry first, so that we can push our Image later'
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
+```
+
+Now after a successful Docker build, that compiles our Spring Boot App into a native executable, we finally need to push the resulting Docker image into Heroku Container Registry.
+
+Therefore we need to use the correct tag for our Docker image build([see the docs](https://devcenter.heroku.com/articles/container-registry-and-runtime#pushing-an-existing-image):
+
+```shell script
+docker build . --tag=registry.heroku.com/<app>/<process-type>
+docker push registry.heroku.com/<app>/<process-type>
+```
+
+This means we add the following `docker tag` and `docker push` command into our [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml):
+
+```yaml
+          echo 'Compile Native Image using Docker'
+          docker build . --tag=registry.heroku.com/spring-boot-graal/web
+
+          echo 'Push to Heroku Container Registry'
+          docker push registry.heroku.com/spring-boot-graal/web
+```
+
+See the paragraph on how to release to Heroku using Containers at [Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure](#pushing-and-releasing-our-dockerized-native-spring-boot-app-on-heroku-container-infrastructure).)
 
 
-# Autorelease on Docker Hub with TravisCI
+
+# Autorelease on Docker Hub with TravisCI & GitHub Actions
 
 We could try to __autorelease to Docker Hub on hub.docker.com:__ 
 
@@ -1475,13 +1581,13 @@ __BUT:__ As the automatic builds feature rely on the Docker Hub build infrastruc
 [91mError: Image build request failed with exit status 1[0m
 ```
 
-Since our TravisCI build is now enabled to successfully run our GraalVM Native Image compilation in a Docker build, we could live without the automatic builds feature of Docker Hub - and simply push our Travis' build image to Docker Hub also!
+Since our TravisCI & GitHub Actions builds are now enabled to successfully run our GraalVM Native Image compilation in a Docker build, we could live without the automatic builds feature of Docker Hub - and simply push our build image to Docker Hub also!
 
 Therefore you need to create an Access Token in your Docker Hub account at https://hub.docker.com/settings/security
 
-Then head over to your TravisCI project settings and add the environment variables `DOCKER_HUB_TOKEN` and `DOCKER_HUB_USERNAME` as already happended for Heroku Container Registry.
+Then head over to your TravisCI & GitHub Actions project settings and add the environment variables `DOCKER_HUB_TOKEN` and `DOCKER_HUB_USERNAME` as already happended for Heroku Container Registry.
 
-The final step then is to add the correct `docker login` and `docker push` commands to our [.travis.yml](.travis.yml):
+The final step then is to add the correct `docker login` and `docker push` commands to our [.travis.yml](.travis.yml) and [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml):
 
 ```yaml
         # Push to Docker Hub also, since automatic Builds there don't have anough RAM to do a docker build
