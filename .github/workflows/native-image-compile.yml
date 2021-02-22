@@ -1,0 +1,50 @@
+name: native-image-compile
+
+on: [push]
+
+jobs:
+  native-image-compile-on-host:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install GraalVM with SDKMAN
+      run: |
+        echo 'Install GraalVM with SDKMAN'
+        curl -s "https://get.sdkman.io" | bash
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install java 20.2.0.r11-grl
+
+        echo 'Check if GraalVM was installed successfully'
+        java -version
+
+    - name: Install Maven with SDKMAN
+      run: |
+        echo 'Install Maven, that uses GraalVM for later builds'
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install maven
+
+        echo 'Show Maven using GraalVM JDK'
+        mvn --version
+
+    - name: Install GraalVM Native Image binary via gu
+      run: |
+        echo 'Install GraalVM Native Image'
+        gu install native-image
+
+        echo 'Check if Native Image was installed properly'
+        native-image --version
+
+    - name: Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
+      run: mvn -Pnative clean package
+
+  native-image-compile-in-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 15
+      - run: #mvn -B verify -P coverage --no-transfer-progress
