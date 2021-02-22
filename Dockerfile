@@ -29,7 +29,7 @@ FROM oraclelinux:7-slim
 MAINTAINER Jonas Hecht
 
 # Add Spring Boot Native app spring-boot-graal to Container
-COPY --from=0 "/build/target/native-image/spring-boot-graal" spring-boot-graal
+COPY --from=0 "/build/target/spring-boot-graal" spring-boot-graal
 
 # Fire up our Spring Boot Native app by default
 CMD [ "sh", "-c", "./spring-boot-graal -Dserver.port=$PORT" ]
