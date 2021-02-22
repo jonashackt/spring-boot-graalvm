@@ -9,6 +9,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Cache SDKMAN archives & candidates
+      uses: actions/cache@v2
+      with:
+        path: ~/.sdkman
+        key: ${{ runner.os }}-sdkman-${{ hashFiles('pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-sdkman-
+
     - name: Install GraalVM with SDKMAN & GraalVM Native Image binary via gu
       run: |
         echo 'Install GraalVM with SDKMAN'
@@ -35,7 +43,7 @@ jobs:
         mvn --version
 
     - name: Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
-      run: mvn -Pnative clean package
+      run: mvn -B clean package -P native --no-transfer-progress
 
   native-image-compile-in-docker:
     runs-on: ubuntu-latest
