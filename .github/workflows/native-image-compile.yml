@@ -9,14 +9,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Cache SDKMAN archives & candidates
-      uses: actions/cache@v2
-      with:
-        path: ~/.sdkman
-        key: ${{ runner.os }}-sdkman-${{ hashFiles('**/pom.xml') }}
-        restore-keys: |
-          ${{ runner.os }}-sdkman-
-
     - name: Install GraalVM, Maven, Native Image & Run Maven build
       run: |
         echo 'Install GraalVM with SDKMAN'
