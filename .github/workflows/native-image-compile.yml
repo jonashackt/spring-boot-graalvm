@@ -51,8 +51,8 @@ jobs:
 
       - name: Build Native Image with Docker and Release to Heroku & Docker Hub
         run: |
-          echo ' Login into Heroku Container Registry first, so that we can push our Image later'
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
+          echo 'Login into Heroku Container Registry first, so that we can push our Image later'
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin registry.heroku.com
 
           echo 'Compile Native Image using Docker'
           docker build . --tag=registry.heroku.com/spring-boot-graal/web
@@ -64,6 +64,8 @@ jobs:
           ./heroku-release.sh spring-boot-graal
 
           echo 'Push to Docker Hub also, since automatic Builds there don't have anough RAM to do a docker build'
-          echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+          echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
           docker tag registry.heroku.com/spring-boot-graal/web jonashackt/spring-boot-graalvm:latest
           docker push jonashackt/spring-boot-graalvm:latest
+        env:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
