@@ -9,7 +9,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install GraalVM with SDKMAN
+    - name: Install GraalVM with SDKMAN & GraalVM Native Image binary via gu
       run: |
         echo 'Install GraalVM with SDKMAN'
         curl -s "https://get.sdkman.io" | bash
@@ -19,6 +19,12 @@ jobs:
         echo 'Check if GraalVM was installed successfully'
         java -version
 
+        echo 'Install GraalVM Native Image'
+        gu install native-image
+
+        echo 'Check if Native Image was installed properly'
+        native-image --version
+
     - name: Install Maven with SDKMAN
       run: |
         echo 'Install Maven, that uses GraalVM for later builds'
@@ -27,14 +33,6 @@ jobs:
 
         echo 'Show Maven using GraalVM JDK'
         mvn --version
-
-    - name: Install GraalVM Native Image binary via gu
-      run: |
-        echo 'Install GraalVM Native Image'
-        gu install native-image
-
-        echo 'Check if Native Image was installed properly'
-        native-image --version
 
     - name: Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
       run: mvn -Pnative clean package
