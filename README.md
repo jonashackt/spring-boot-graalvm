@@ -1,10 +1,10 @@
 # spring-boot-graalvm
-[![Build Status](https://travis-ci.com/jonashackt/spring-boot-graalvm.svg?branch=master)](https://travis-ci.com/jonashackt/spring-boot-graalvm)
+[![Build Status](https://github.com/jonashackt/spring-boot-graalvm/workflows/native-image-compile/badge.svg)](https://github.com/jonashackt/spring-boot-graalvm/actions)
 [![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/spring-boot-graalvm/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 [![versionspringboot](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27parent%27%5D%2F%2A%5Blocal-name%28%29%3D%27version%27%5D&label=springboot)](https://github.com/spring-projects/spring-boot)
 [![versionspring-graalvm-native](https://img.shields.io/badge/dynamic/xml?color=brightgreen&url=https://raw.githubusercontent.com/jonashackt/spring-boot-graalvm/master/pom.xml&query=%2F%2A%5Blocal-name%28%29%3D%27project%27%5D%2F%2A%5Blocal-name%28%29%3D%27properties%27%5D%2F%2A%5Blocal-name%28%29%3D%27spring-graalvm-native.version%27%5D&label=spring-graalvm-native)](https://github.com/spring-projects-experimental/spring-graalvm-native)
-[![versionjava](https://img.shields.io/badge/graalvm_ce-20.2.0_JDK11-orange.svg?logo=java)](https://www.graalvm.org/)
+[![versionjava](https://img.shields.io/badge/graalvm_ce-20.3.1.2_JDK11-orange.svg?logo=java)](https://www.graalvm.org/)
 [![Deployed on Heroku](https://img.shields.io/badge/heroku-deployed-blueviolet.svg?logo=heroku&)](https://spring-boot-graal.herokuapp.com/hello)
 [![Pushed to Docker Hub](https://img.shields.io/badge/docker_hub-released-blue.svg?logo=docker)](https://hub.docker.com/r/jonashackt/spring-boot-graalvm)
 
@@ -47,6 +47,7 @@ This project is used as example in some articles:
 * [Build and Run your Native Image compilation on a Cloud-CI provider like TravisCI](#build-and-run-your-native-image-compilation-on-a-cloud-ci-provider-like-travisci)
   * [Prevent the 'java.lang.UnsatisfiedLinkError: no netty_transport_native_epoll_x86_64 in java.library.path: [/usr/java/packages/lib, /usr/lib64, /lib64, /lib, /usr/lib]' error](#prevent-the-javalangunsatisfiedlinkerror-no-netty_transport_native_epoll_x86_64-in-javalibrarypath-usrjavapackageslib-usrlib64-lib64-lib-usrlib-error)
   * [Tackling the 'There was an error linking the native image /usr/bin/ld: final link failed: Memory exhausted' error](#tackling-the-there-was-an-error-linking-the-native-image-usrbinld-final-link-failed-memory-exhausted-error)
+* [Build and Run your Native Image compilation on GitHub Actions](#build-and-run-your-native-image-compilation-on-github-actions)
 * [Use Docker to compile a Spring Boot App with GraalVM](#use-docker-to-compile-a-spring-boot-app-with-graalvm)
   * [Tackling 'Exception java.lang.OutOfMemoryError in thread "native-image pid watcher"' error](#tackling-exception-javalangoutofmemoryerror-in-thread-native-image-pid-watcher-error)
   * [Run Spring Boot Native Apps in Docker](#run-spring-boot-native-apps-in-docker)
@@ -56,6 +57,7 @@ This project is used as example in some articles:
   * [Work around the Heroku 512MB RAM cap: Building our Dockerimage with TravisCI](#work-around-the-heroku-512mb-ram-cap-building-our-dockerimage-with-travisci)
   * [Tackling 'Error: Image build request failed with exit status 137' with the -J-Xmx parameter](#tackling-error-image-build-request-failed-with-exit-status-137-with-the--j-xmx-parameter)
   * [Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure](#pushing-and-releasing-our-dockerized-native-spring-boot-app-on-heroku-container-infrastructure)
+  * [Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure using GitHub Actions](#pushing-and-releasing-our-dockerized-native-spring-boot-app-on-heroku-container-infrastructure-using-github-actions)
 * [Autorelease on Docker Hub with TravisCI](#autorelease-on-docker-hub-with-travisci)
 * [Links](#links)
 
@@ -944,17 +946,72 @@ user	17m46.032s
 sys	0m11.720s
 ```
 
+# Build and Run your Native Image compilation on GitHub Actions
+
+Since Travis laid down their OpenSource support to a massive degree, many maintainers move their repos over to GitHub Actions - see also this post: https://blog.codecentric.de/en/2021/02/github-actions-pipeline/
+
+So let's implement a [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml):
+
+```yaml
+name: native-image-compile
+
+on: [push]
+
+jobs:
+  native-image-compile-on-host:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Cache SDKMAN archives & candidates
+      uses: actions/cache@v2
+      with:
+        path: ~/.sdkman
+        key: ${{ runner.os }}-sdkman-${{ hashFiles('pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-sdkman-
+
+    - name: Install GraalVM, Maven, Native Image & Run Maven build
+      run: |
+        echo 'Install GraalVM with SDKMAN'
+        curl -s "https://get.sdkman.io" | bash
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install java 20.2.0.r11-grl
+
+        echo 'Check if GraalVM was installed successfully'
+        java -version
+
+        echo 'Install GraalVM Native Image'
+        gu install native-image
+
+        echo 'Check if Native Image was installed properly'
+        native-image --version
+
+        echo 'Install Maven, that uses GraalVM for later builds'
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install maven
+
+        echo 'Show Maven using GraalVM JDK'
+        mvn --version
+
+        echo 'Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)'
+        mvn -B clean package -P native --no-transfer-progress
+```
+
+This one does exactly what we did with TravisCI - building the native image using Maven and installing GraalVM beforehand.
+
 
 # Use Docker to compile a Spring Boot App with GraalVM
 
-There's an [official Docker image from Oracle](https://hub.docker.com/r/oracle/graalvm-ce/tags), but this one sadyl lacks both Maven with it's `mvn` command and the `native-image` plugin also not installed.
+There's an [official Docker image from Oracle](https://github.com/orgs/graalvm/packages/container/package/graalvm-ce), but this one sadyl lacks both Maven with it's `mvn` command and the `native-image` plugin also not installed.
 
 But we can help ourselves - we just craft a simple [Dockerfile](Dockerfile) for us. We're already used to leverage SDKMAN to install Maven. Therefore we need to install `unzip` and `zip` first, since SDKMAN needs both to work properly:
 
 ```dockerfile
 # Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
-# https://hub.docker.com/r/oracle/graalvm-ce image
-FROM oracle/graalvm-ce:20.2.0-java11
+# https://github.com/orgs/graalvm/packages/container/package/graalvm-ce image
+FROM ghcr.io/graalvm/graalvm-ce:ol7-java11-20.3.1.2
 
 # For SDKMAN to work we need unzip & zip
 RUN yum install -y unzip zip
@@ -980,7 +1037,7 @@ In order to enable the `mvn` command for a user of our Docker image, we craft a 
 Now let's build our Image with:
 
 ```shell script
-docker build . --tag=graalvm-ce:20.2.0-java11-mvn-native-image
+docker build . --tag=graalvm-ce:20.3.0-java11-mvn-native-image
 ```
 
 Now we should be able to launch our GraalVM Native Image compilation inside official Oracle GraalVM image with:
@@ -990,7 +1047,7 @@ docker run -it --rm \
     --volume $(pwd):/build \
     --workdir /build \
     --volume "$HOME"/.m2:/root/.m2 \
-    graalvm-ce:20.2.0-java11-mvn-native-image ./compile.sh
+    graalvm-ce:20.3.0-java11-mvn-native-image ./compile.sh
 ```
 
 When I first thought about a Docker usage, I wanted to pack this build into a `Dockerfile` also - but then I realized, that there's [no easy way of using Docker volumes at Docker build time](https://stackoverflow.com/questions/51086724/docker-build-using-volumes-at-build-time). But I really wanted to mount a Docker volume to my local Maven repository like `--volume "$HOME"/.m2:/root/.m2` to prevent the download of all the Spring Maven dependencies over and over again every time we start our Docker container.
@@ -1027,8 +1084,8 @@ Therefore let's refactor our Dockerfile:
 
 ```dockerfile
 # Simple Dockerfile adding Maven and GraalVM Native Image compiler to the standard
-# https://hub.docker.com/r/oracle/graalvm-ce image
-FROM oracle/graalvm-ce:20.2.0-java11
+# https://github.com/orgs/graalvm/packages/container/package/graalvm-ce image
+FROM ghcr.io/graalvm/graalvm-ce:ol7-java11-20.3.1.2
 
 ADD . /build
 WORKDIR /build
@@ -1063,7 +1120,7 @@ COPY --from=0 "/build/target/native-image/spring-boot-graal" spring-boot-graal
 CMD [ "sh", "-c", "./spring-boot-graal" ]
 ```
 
-Additionally the second container isn't based on the `oracle/graalvm-ce` image containing a GraalVM installation, Maven and the `native-image` command - but instead uses [the base image of this image](https://github.com/oracle/docker-images/blob/master/GraalVM/CE/Dockerfile.java11), which is `oraclelinux:7-slim`.
+Additionally the second container isn't based on the `ghcr.io/graalvm/graalvm-ce` image containing a GraalVM installation, Maven and the `native-image` command - but instead uses [the base image of this image](https://github.com/oracle/docker-images/blob/master/GraalVM/CE/Dockerfile.java11), which is `oraclelinux:7-slim`.
 
 With that we reduce the resulting Docker image size from around `1.48GB` to only `186MB`!
 
@@ -1098,7 +1155,7 @@ user	16m32.096s
 sys	1m34.441s
 Removing intermediate container 151e1413ec2f
  ---> be671d4f237f
-Step 10/13 : FROM oracle/graalvm-ce:20.2.0-java11
+Step 10/13 : FROM docker pull ghcr.io/graalvm/graalvm-ce:ol7-java11-20.3.1.2
  ---> 364d0bb387bd
 Step 11/13 : MAINTAINER Jonas Hecht
  ---> Using cache
@@ -1322,6 +1379,20 @@ sys	2m3.179s
 The one thing to take into account is that Native Image compilation will be a bit slower now. So if you run on your local machine with lot's of memory, feel free to delete the ` -J-Xmx4G` parameter :)
 
 
+### Work around the Heroku 512MB RAM cap: Building our Dockerimage with GitHub Actions
+
+```yaml
+  native-image-compile-in-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Compile Native Image using Docker
+        run: docker build . --tag=registry.heroku.com/spring-boot-graal/web
+```
+
+
 ### Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure
 
 Now we should be able to finally [push the build Docker image into Heroku's Container Registry](https://devcenter.heroku.com/articles/container-registry-and-runtime#using-a-ci-cd-platform), from where we're able to run our Spring Boot Native app later on.
@@ -1449,9 +1520,45 @@ $ heroku logs -a spring-boot-graal
 ```
 
 
+### Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure using GitHub Actions
+
+We should also use GitHub Actions to [push the build Docker image into Heroku's Container Registry](https://devcenter.heroku.com/articles/container-registry-and-runtime#using-a-ci-cd-platform).
+
+Therefore we need to configure encrypted variables in our GitHub repository in order to push to Heroku's Container Registry:
+`DOCKER_USERNAME` and `DOCKER_PASSWORD`. The first is your Heroku eMail, the latter is your Heroku API key. Be sure to prevent displaying the values in the build log:
+
+With the following configuration inside our [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml), we should be able to successfully log in to Heroku Container Registry:
+
+```yaml
+        run: |
+          echo ' Login into Heroku Container Registry first, so that we can push our Image later'
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin registry.heroku.com
+```
+
+Now after a successful Docker build, that compiles our Spring Boot App into a native executable, we finally need to push the resulting Docker image into Heroku Container Registry.
+
+Therefore we need to use the correct tag for our Docker image build([see the docs](https://devcenter.heroku.com/articles/container-registry-and-runtime#pushing-an-existing-image):
+
+```shell script
+docker build . --tag=registry.heroku.com/<app>/<process-type>
+docker push registry.heroku.com/<app>/<process-type>
+```
+
+This means we add the following `docker tag` and `docker push` command into our [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml):
+
+```yaml
+          echo 'Compile Native Image using Docker'
+          docker build . --tag=registry.heroku.com/spring-boot-graal/web
+
+          echo 'Push to Heroku Container Registry'
+          docker push registry.heroku.com/spring-boot-graal/web
+```
+
+See the paragraph on how to release to Heroku using Containers at [Pushing and Releasing our Dockerized Native Spring Boot App on Heroku Container Infrastructure](#pushing-and-releasing-our-dockerized-native-spring-boot-app-on-heroku-container-infrastructure).)
 
 
-# Autorelease on Docker Hub with TravisCI
+
+# Autorelease on Docker Hub with TravisCI & GitHub Actions
 
 We could try to __autorelease to Docker Hub on hub.docker.com:__ 
 
@@ -1475,13 +1582,13 @@ __BUT:__ As the automatic builds feature rely on the Docker Hub build infrastruc
 [91mError: Image build request failed with exit status 1[0m
 ```
 
-Since our TravisCI build is now enabled to successfully run our GraalVM Native Image compilation in a Docker build, we could live without the automatic builds feature of Docker Hub - and simply push our Travis' build image to Docker Hub also!
+Since our TravisCI & GitHub Actions builds are now enabled to successfully run our GraalVM Native Image compilation in a Docker build, we could live without the automatic builds feature of Docker Hub - and simply push our build image to Docker Hub also!
 
 Therefore you need to create an Access Token in your Docker Hub account at https://hub.docker.com/settings/security
 
-Then head over to your TravisCI project settings and add the environment variables `DOCKER_HUB_TOKEN` and `DOCKER_HUB_USERNAME` as already happended for Heroku Container Registry.
+Then head over to your TravisCI & GitHub Actions project settings and add the environment variables `DOCKER_HUB_TOKEN` and `DOCKER_HUB_USERNAME` as already happended for Heroku Container Registry.
 
-The final step then is to add the correct `docker login` and `docker push` commands to our [.travis.yml](.travis.yml):
+The final step then is to add the correct `docker login` and `docker push` commands to our [.travis.yml](.travis.yml) and [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml):
 
 ```yaml
         # Push to Docker Hub also, since automatic Builds there don't have anough RAM to do a docker build
@@ -1504,7 +1611,7 @@ This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app lo
 
 # Links
 
-### Spring / Pivotal
+### Spring
 
 Current docs: https://repo.spring.io/milestone/org/springframework/experimental/spring-graalvm-native-docs/0.7.0/spring-graalvm-native-docs-0.7.0.zip!/reference/index.html
 
@@ -1520,6 +1627,14 @@ https://spring.io/blog/2020/04/16/spring-tips-the-graalvm-native-image-builder-f
 
 https://spring.io/blog/2020/06/10/the-path-towards-spring-boot-native-applications
 
+##### 0.8.3
+
+Spring Boot 2.4.0 Release + Oracle GraalVM 20.3.x compatibility: https://spring.io/blog/2020/11/23/spring-native-for-graalvm-0-8-3-available-now
+
+No `-H:+TraceClassInitialization` as simple boolean anymore: https://github.com/quarkusio/quarkus/issues/12434 & https://github.com/oracle/graal/commit/8c210f7fdbba5045bfbe14b6870f98ebbff6eed7
+
+With GraalVM 20.3.x the official Docker image moved from Docker Hub to GitHub Packages: https://github.com/orgs/graalvm/packages/container/package/graalvm-ce
+
 
 ### Stackoverflow
 
@@ -1534,7 +1649,7 @@ https://stackoverflow.com/questions/61302412/how-to-configure-the-port-of-a-spri
 
 https://blog.softwaremill.com/graalvm-installation-and-setup-on-macos-294dd1d23ca2
 
-https://hub.docker.com/r/oracle/graalvm-ce/
+https://github.com/orgs/graalvm/packages/container/package/graalvm-ce
 
 https://www.graalvm.org/docs/reference-manual/native-image/
 
