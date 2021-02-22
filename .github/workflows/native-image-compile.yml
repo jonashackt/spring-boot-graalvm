@@ -13,7 +13,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.sdkman
-        key: ${{ runner.os }}-sdkman-${{ hashFiles('pom.xml') }}
+        key: ${{ runner.os }}-sdkman-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
           ${{ runner.os }}-sdkman-
 
@@ -22,7 +22,7 @@ jobs:
         echo 'Install GraalVM with SDKMAN'
         curl -s "https://get.sdkman.io" | bash
         source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sdk install java 20.3.1.2.r11-grl < /dev/null
+        sdk install java 20.3.1.2.r11-grl
 
         echo 'Check if GraalVM was installed successfully'
         java -version
