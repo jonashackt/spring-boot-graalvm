@@ -32,9 +32,8 @@ jobs:
 
         echo 'Check if Native Image was installed properly'
         native-image --version
-
-    - name: Install Maven with SDKMAN
-      run: |
+#    - name: Install Maven with SDKMAN
+#      run: |
         echo 'Install Maven, that uses GraalVM for later builds'
         source "$HOME/.sdkman/bin/sdkman-init.sh"
         sdk install maven
@@ -42,8 +41,10 @@ jobs:
         echo 'Show Maven using GraalVM JDK'
         mvn --version
 
-    - name: Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
-      run: mvn -B clean package -P native --no-transfer-progress
+        mvn -B clean package -P native --no-transfer-progress
+
+#    - name: Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
+#      run: mvn -B clean package -P native --no-transfer-progress
 
   native-image-compile-in-docker:
     runs-on: ubuntu-latest
