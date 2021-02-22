@@ -17,7 +17,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-sdkman-
 
-    - name: Install GraalVM with SDKMAN & GraalVM Native Image binary via gu
+    - name: Install GraalVM, Maven, Native Image & Run Maven build
       run: |
         echo 'Install GraalVM with SDKMAN'
         curl -s "https://get.sdkman.io" | bash
@@ -40,12 +40,8 @@ jobs:
         echo 'Show Maven using GraalVM JDK'
         mvn --version
 
+        echo 'Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)'
         mvn -B clean package -P native --no-transfer-progress
-
-  #    - name: Install Maven with SDKMAN
-  #      run: |
-#    - name: Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
-#      run: mvn -B clean package -P native --no-transfer-progress
 
   native-image-compile-in-docker:
     runs-on: ubuntu-latest
