@@ -63,7 +63,7 @@ jobs:
           echo 'Release Dockerized Native Spring Boot App on Heroku'
           ./heroku-release.sh spring-boot-graal
 
-          echo 'Push to Docker Hub also, since automatic Builds there don't have anough RAM to do a docker build'
+          echo 'Push to Docker Hub also, since automatic Builds there dont have anough RAM to do a docker build'
           echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
           docker tag registry.heroku.com/spring-boot-graal/web jonashackt/spring-boot-graalvm:latest
           docker push jonashackt/spring-boot-graalvm:latest
