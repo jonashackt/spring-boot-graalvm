@@ -8,6 +8,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Cache SDKMAN installation
+      uses: actions/cache@v2
+      with:
+        path: ~/.sdkman
+        key: ${{ runner.os }}-sdkman-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-sdkman-
+
     - name: Install GraalVM with SDKMAN
       run: |
         curl -s "https://get.sdkman.io" | bash
@@ -17,6 +25,7 @@ jobs:
 
     - name: Install GraalVM Native Image
       run: |
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
         gu install native-image
         native-image --version
 
