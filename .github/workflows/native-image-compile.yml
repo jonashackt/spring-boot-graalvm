@@ -36,7 +36,9 @@ jobs:
         mvn --version
 
     - name: Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
-      run: mvn -B clean package -P native --no-transfer-progress
+      run: |
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        mvn -B clean package -P native --no-transfer-progress
 
   native-image-compile-in-docker:
     runs-on: ubuntu-latest
