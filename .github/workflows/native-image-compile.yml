@@ -5,59 +5,60 @@ on: [push]
 jobs:
   native-image-compile-on-host:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install GraalVM, Maven, Native Image & Run Maven build
+    - name: Cache SDKMAN installation
+      uses: actions/cache@v2
+      with:
+        path: ~/.sdkman
+        key: ${{ runner.os }}-sdkman-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-sdkman-
+
+    - name: Install GraalVM with SDKMAN
       run: |
-        echo 'Install GraalVM with SDKMAN'
         curl -s "https://get.sdkman.io" | bash
         source "$HOME/.sdkman/bin/sdkman-init.sh"
         sdk install java 20.3.1.2.r11-grl
-
-        echo 'Check if GraalVM was installed successfully'
         java -version
 
-        echo 'Install GraalVM Native Image'
+    - name: Install GraalVM Native Image
+      run: |
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
         gu install native-image
-
-        echo 'Check if Native Image was installed properly'
         native-image --version
 
-        echo 'Install Maven, that uses GraalVM for later builds'
+    - name: Install Maven, that uses GraalVM for later builds
+      run: |
         source "$HOME/.sdkman/bin/sdkman-init.sh"
         sdk install maven
-
-        echo 'Show Maven using GraalVM JDK'
         mvn --version
 
-        echo 'Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)'
+    - name: Run GraalVM Native Image compilation of Spring Boot App (Maven version instead of ./compile.sh)
+      run: |
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
         mvn -B clean package -P native --no-transfer-progress
 
   native-image-compile-in-docker:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build Native Image with Docker and Release to Heroku & Docker Hub
+      - name: Login into Heroku Container Registry first, so that we can push our Image later
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin registry.heroku.com
+
+      - name: Compile Native Image using Docker
+        run: docker build . --tag=registry.heroku.com/spring-boot-graal/web
+
+      - name: Push to Heroku Container Registry
+        run: docker push registry.heroku.com/spring-boot-graal/web
+
+      - name: Release Dockerized Native Spring Boot App on Heroku
+        run: ./heroku-release.sh spring-boot-graal
+
+      - name: Push to Docker Hub also, since automatic Builds there dont have anough RAM to do a docker build
         run: |
-          echo 'Login into Heroku Container Registry first, so that we can push our Image later'
-          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin registry.heroku.com
-
-          echo 'Compile Native Image using Docker'
-          docker build . --tag=registry.heroku.com/spring-boot-graal/web
-
-          echo 'Push to Heroku Container Registry'
-          docker push registry.heroku.com/spring-boot-graal/web
-
-          echo 'Release Dockerized Native Spring Boot App on Heroku'
-          ./heroku-release.sh spring-boot-graal
-
-          echo 'Push to Docker Hub also, since automatic Builds there dont have anough RAM to do a docker build'
           echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
           docker tag registry.heroku.com/spring-boot-graal/web jonashackt/spring-boot-graalvm:latest
           docker push jonashackt/spring-boot-graalvm:latest
-        env:
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
