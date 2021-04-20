@@ -18,7 +18,7 @@
 		<java.version>8</java.version>
 		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
 		<spring-graalvm-native.version>0.8.5</spring-graalvm-native.version>
-		<native-image-maven-plugin.version>20.3.1.2</native-image-maven-plugin.version>
+		<native-image-maven-plugin.version>20.3.2</native-image-maven-plugin.version>
 	</properties>
 
 	<dependencies>
