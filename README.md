@@ -1609,6 +1609,256 @@ This pulls the latest `jonashackt/spring-boot-graalvm` image and runs our app lo
 
 
 
+
+
+
+# Upgrade to spring-native (from spring-graalvm-native) & spring-aot-maven-plugin & GraalVM 21.3
+
+Current docs: https://docs.spring.io/spring-native/docs/current/reference/htmlsingle/index.html#overview
+
+https://spring.io/blog/2021/03/11/announcing-spring-native-beta
+
+
+### spring-graalvm-native -> spring-native
+
+Switch from `spring-graalvm-native` to `spring-native`:
+
+```xml
+<spring-graalvm-native.version>0.8.5</spring-graalvm-native.version>
+<dependency>
+    <groupId>org.springframework.experimental</groupId>
+    <artifactId>spring-graalvm-native</artifactId>
+    <version>${spring-graalvm-native.version}</version>
+</dependency>
+
+to
+
+<spring-native.version>0.10.5</spring-native.version>
+<dependency>
+    <groupId>org.springframework.experimental</groupId>
+    <artifactId>spring-native</artifactId>
+    <version>${spring-native.version}</version>
+</dependency>
+```
+
+
+### Spring Boot Version <=> spring-native Version <=> GraalVM version <=> Java version
+
+https://github.com/spring-projects-experimental/spring-native/milestones?state=closed
+
+https://docs.spring.io/spring-native/docs/current/reference/htmlsingle/index.html#_validate_spring_boot_version
+
+> Spring Native 0.10.5 only supports Spring Boot 2.5.6, so change the version if necessary.
+
+https://docs.spring.io/spring-native/docs/current/reference/htmlsingle/index.html#_freeze_graalvm_version
+
+Install the matching GraalVM version with SDKMAN:
+
+```shell
+sdk install java 21.2.0.r11-grl
+```
+
+This will also configure the correct Maven version.
+
+
+Run 
+
+```shell
+$ native-image --version
+GraalVM 21.2.0 Java 11 CE (Java Version 11.0.12+6-jvmci-21.2-b08)
+
+$ java -version
+openjdk version "11.0.12" 2021-07-20
+OpenJDK Runtime Environment GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b08)
+OpenJDK 64-Bit Server VM GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b08, mixed mode, sharing)
+
+$ mvn --version
+Apache Maven 3.8.3 (ff8e977a158738155dc465c6a97ffaf31982d739)
+Maven home: /Users/jonashecht/.sdkman/candidates/maven/current
+Java version: 11.0.12, vendor: GraalVM Community, runtime: /Users/jonashecht/.sdkman/candidates/java/21.2.0.r11-grl
+Default locale: de_DE, platform encoding: UTF-8
+OS name: "mac os x", version: "11.5", arch: "x86_64", family: "mac"
+```
+
+Also use the matching version (see https://github.com/graalvm/container/pkgs/container/graalvm-ce) inside your [Dockerfile](Dockerfile) (if you don't use Buildpacks):
+
+```dockerfile
+FROM ghcr.io/graalvm/graalvm-ce:ol7-java11-21.2.0
+```
+
+and inside your CI system like GitHub Actions [.github/workflows/native-image-compile.yml](.github/workflows/native-image-compile.yml):
+
+```yaml
+    - name: Install GraalVM with SDKMAN
+      run: |
+        curl -s "https://get.sdkman.io" | bash
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install java 21.2.0.r11-grl
+        java -version
+```
+
+
+### Enable native image support via spring-boot-maven-plugin
+
+https://docs.spring.io/spring-native/docs/current/reference/htmlsingle/index.html#_enable_native_image_support
+
+Enhance `spring-boot-maven-plugin` buildpacks configuration & `${repackage.classifier}`:
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+        </plugin>
+    </plugins>
+</build>
+
+to
+
+<plugin>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
+    <configuration>
+        <classifier>${repackage.classifier}</classifier>
+        <image>
+            <builder>paketobuildpacks/builder:tiny</builder>
+            <env>
+                <BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
+            </env>
+        </image>
+    </configuration>
+</plugin>
+```
+
+
+### spring-context-indexer --> spring-aot-maven-plugin
+
+https://docs.spring.io/spring-native/docs/current/reference/htmlsingle/index.html#_add_the_spring_aot_plugin
+
+From `spring-context-indexer` to new Spring ahead-of-time (AOT) Maven build plugin `spring-aot-maven-plugin`:
+
+```xml
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-indexer</artifactId>
+		</dependency>
+
+to
+
+        <plugin>
+            <groupId>org.springframework.experimental</groupId>
+            <artifactId>spring-aot-maven-plugin</artifactId>
+            <version>${spring-native.version}</version>
+            <executions>
+                <execution>
+                    <id>test-generate</id>
+                    <goals>
+                        <goal>test-generate</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>generate</id>
+                    <goals>
+                        <goal>generate</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+
+### native-image-maven-plugin --> native-maven-plugin
+
+Inside the profile `native` move plugin `org.graalvm.nativeimage.native-image-maven-plugin` to new `org.graalvm.buildtools.native-maven-plugin`:
+
+```xml
+
+    <native-image-maven-plugin.version>20.3.2</native-image-maven-plugin.version>
+	<profiles>
+		<profile>
+			<id>native</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.nativeimage</groupId>
+						<artifactId>native-image-maven-plugin</artifactId>
+						<version>${native-image-maven-plugin.version}</version>
+						<configuration>
+							<buildArgs>-J-Xmx4G -H:+ReportExceptionStackTraces -Dspring.native.remove-unused-autoconfig=true -Dspring.native.remove-yaml-support=true</buildArgs>
+							<imageName>${project.artifactId}</imageName>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>native-image</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.springframework.boot</groupId>
+						<artifactId>spring-boot-maven-plugin</artifactId>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
+to
+    <native-buildtools.version>0.9.4</native-buildtools.version>
+    <profiles>
+        <profile>
+            <id>native</id>
+            <properties>
+                <repackage.classifier>exec</repackage.classifier>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.graalvm.buildtools</groupId>
+                    <artifactId>junit-platform-native</artifactId>
+                    <version>${native-buildtools.version}</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                  <plugin>
+                      <groupId>org.graalvm.buildtools</groupId>
+                      <artifactId>native-maven-plugin</artifactId>
+                      <version>${native-buildtools.version}</version>
+                      <executions>
+                          <execution>
+                              <id>test-native</id>
+                              <phase>test</phase>
+                              <goals>
+                                  <goal>test</goal>
+                              </goals>
+                          </execution>
+                          <execution>
+                              <id>build-native</id>
+                              <phase>package</phase>
+                              <goals>
+                                  <goal>build</goal>
+                              </goals>
+                          </execution>
+                      </executions>
+                  </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+```
+
+
+
+
+
+
+
 # Links
 
 ### Spring

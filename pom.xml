@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.4.5</version>
+		<version>2.5.6</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>io.jonashackt</groupId>
@@ -15,22 +15,22 @@
 	<description>An example REST based Spring Boot application, that runs with GraalVM</description>
 
 	<properties>
-		<java.version>8</java.version>
-		<start-class>io.jonashackt.springbootgraal.SpringBootHelloApplication</start-class>
-		<spring-graalvm-native.version>0.8.5</spring-graalvm-native.version>
-		<native-image-maven-plugin.version>20.3.2</native-image-maven-plugin.version>
+		<!-- Java Version must match GraalVM version - which must match Spring Boot version - which again must match spring-native Version !-->
+		<java.version>11</java.version>
+		<spring-native.version>0.10.5</spring-native.version>
+		<native-buildtools.version>0.9.4</native-buildtools.version>
+		<!-- Customize Spring Boot classifier, useful in order to avoid a clash between Spring Boot repackaging and native-image-maven-plugin -->
+		<repackage.classifier/>
+		<!-- `tiny` builder allows small footprint and reduced surface attack, you can also use `base` (the default) or `full` builders to have more tooling available in the image for an improved developer experience -->
+		<builder>paketobuildpacks/builder:tiny</builder>
+
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.experimental</groupId>
-			<artifactId>spring-graalvm-native</artifactId>
-			<version>${spring-graalvm-native.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-context-indexer</artifactId>
+			<artifactId>spring-native</artifactId>
+			<version>${spring-native.version}</version>
 		</dependency>
 
 		<dependency>
@@ -42,13 +42,8 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
-			<exclusions>
-				<exclusion>
-					<groupId>org.junit.vintage</groupId>
-					<artifactId>junit-vintage-engine</artifactId>
-				</exclusion>
-			</exclusions>
 		</dependency>
+
 		<dependency>
 			<groupId>io.projectreactor</groupId>
 			<artifactId>reactor-test</artifactId>
@@ -61,50 +56,101 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<classifier>${repackage.classifier}</classifier>
+					<image>
+						<builder>${builder}</builder>
+						<env>
+							<BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
+						</env>
+					</image>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.experimental</groupId>
+				<artifactId>spring-aot-maven-plugin</artifactId>
+				<version>${spring-native.version}</version>
+				<configuration>
+					<removeSpelSupport>true</removeSpelSupport>
+				</configuration>
+				<executions>
+					<execution>
+						<id>test-generate</id>
+						<goals>
+							<goal>test-generate</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>generate</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
 
 	<repositories>
 		<repository>
-			<id>spring-milestones</id>
-			<name>Spring Milestones</name>
-			<url>https://repo.spring.io/milestone</url>
+			<id>spring-releases</id>
+			<name>Spring Releases</name>
+			<url>https://repo.spring.io/release</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
 		</repository>
 	</repositories>
 	<pluginRepositories>
 		<pluginRepository>
-			<id>spring-milestones</id>
-			<name>Spring Milestones</name>
-			<url>https://repo.spring.io/milestone</url>
+			<id>spring-releases</id>
+			<name>Spring Releases</name>
+			<url>https://repo.spring.io/release</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
 		</pluginRepository>
 	</pluginRepositories>
 
 	<profiles>
 		<profile>
 			<id>native</id>
+			<properties>
+				<repackage.classifier>exec</repackage.classifier>
+			</properties>
+			<dependencies>
+				<dependency>
+					<groupId>org.graalvm.buildtools</groupId>
+					<artifactId>junit-platform-native</artifactId>
+					<version>${native-buildtools.version}</version>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
 			<build>
 				<plugins>
 					<plugin>
-						<groupId>org.graalvm.nativeimage</groupId>
-						<artifactId>native-image-maven-plugin</artifactId>
-						<version>${native-image-maven-plugin.version}</version>
+						<groupId>org.graalvm.buildtools</groupId>
+						<artifactId>native-maven-plugin</artifactId>
+						<version>${native-buildtools.version}</version>
 						<configuration>
-							<buildArgs>-J-Xmx4G -H:+ReportExceptionStackTraces -Dspring.native.remove-unused-autoconfig=true -Dspring.native.remove-yaml-support=true</buildArgs>
-							<imageName>${project.artifactId}</imageName>
+							<buildArgs>-J-Xmx4G -H:+ReportExceptionStackTraces</buildArgs>
 						</configuration>
 						<executions>
+<!--							<execution>-->
+<!--								<id>test-native</id>-->
+<!--								<phase>test</phase>-->
+<!--								<goals>-->
+<!--									<goal>test</goal>-->
+<!--								</goals>-->
+<!--							</execution>-->
 							<execution>
-								<goals>
-									<goal>native-image</goal>
-								</goals>
+								<id>build-native</id>
 								<phase>package</phase>
+								<goals>
+									<goal>build</goal>
+								</goals>
 							</execution>
 						</executions>
-					</plugin>
-					<plugin>
-						<groupId>org.springframework.boot</groupId>
-						<artifactId>spring-boot-maven-plugin</artifactId>
 					</plugin>
 				</plugins>
 			</build>
