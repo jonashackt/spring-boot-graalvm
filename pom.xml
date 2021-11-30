@@ -18,7 +18,7 @@
 		<!-- Java Version must match GraalVM version - which must match Spring Boot version - which again must match spring-native Version !-->
 		<java.version>11</java.version>
 		<spring-native.version>0.10.5</spring-native.version>
-		<native-buildtools.version>0.9.7.1</native-buildtools.version>
+		<native-buildtools.version>0.9.8</native-buildtools.version>
 		<!-- Customize Spring Boot classifier, useful in order to avoid a clash between Spring Boot repackaging and native-image-maven-plugin -->
 		<repackage.classifier/>
 		<!-- `tiny` builder allows small footprint and reduced surface attack, you can also use `base` (the default) or `full` builders to have more tooling available in the image for an improved developer experience -->
