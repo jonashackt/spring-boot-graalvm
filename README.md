@@ -35,7 +35,7 @@ This project is used as example in some articles:
 * [Create a simple WebFlux Reactive REST Spring Boot app](#create-a-simple-webflux-reactive-rest-spring-boot-app)
 * [Make Spring Boot app Graal Native Image friendly](#make-spring-boot-app-graal-native-image-friendly)
   * [Relocate Annotation classpath scanning from runtime to build time](#relocate-annotation-classpath-scanning-from-runtime-to-build-time)
-  * [Disable usage of GCLIB proxies](#disable-usage-of-gclib-proxies)
+  * [Disable usage of CGLIB proxies](#disable-usage-of-cglib-proxies)
   * [Detect Autoconfiguration](#detect-autoconfiguration)
   * [Get Spring Graal @AutomaticFeature](#get-spring-graal-automaticfeature)
   * [Set start-class element in pom.xml](#set-start-class-element-in-pomxml)
@@ -303,9 +303,9 @@ The `@AutomaticFeature` will additionally chase down imported annotated classes 
 And as resource files like `application.properties` also need to be registered at build time, the Feature covers those too. 
 
 
-### Disable usage of GCLIB proxies
+### Disable usage of CGLIB proxies
 
-With Spring Boot 2.2 GCLIB proxies are no longer necessary - it introduces the new `proxyBeanMethods` option to avoid GCLIB processing. Let's have a look at our [SpringBootHelloApplication.java](src/main/java/io/jonashackt/springbootgraal/SpringBootHelloApplication.java):
+With Spring Boot 2.2 CGLIB proxies are no longer necessary - it introduces the new `proxyBeanMethods` option to avoid CGLIB processing. Let's have a look at our [SpringBootHelloApplication.java](src/main/java/io/jonashackt/springbootgraal/SpringBootHelloApplication.java):
 
 ```java
 @SpringBootApplication(proxyBeanMethods = false)
