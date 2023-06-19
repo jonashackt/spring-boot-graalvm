@@ -24,7 +24,7 @@ RUN source "$HOME/.sdkman/bin/sdkman-init.sh" && mvn -B clean package -P native 
 
 
 # We use a Docker multi-stage build here in order that we only take the compiled native Spring Boot App from the first build container
-FROM oraclelinux:7-slim
+FROM oraclelinux:9-slim
 
 MAINTAINER Jonas Hecht
 
