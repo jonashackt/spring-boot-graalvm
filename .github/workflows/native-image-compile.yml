@@ -6,7 +6,7 @@ jobs:
   native-image-compile-on-host:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Cache SDKMAN installation
       uses: actions/cache@v3
@@ -43,7 +43,7 @@ jobs:
   native-image-compile-in-docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Login into Heroku Container Registry first, so that we can push our Image later
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin registry.heroku.com
